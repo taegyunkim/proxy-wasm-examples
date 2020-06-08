@@ -23,8 +23,8 @@ filter_name=$2
 id=$3
 namespace=$4
 
-app_labels=$(kubectl get deployments -L app | awk '{print $6}' | sed '1d')
-app_labels=($app_labels)
+deployments=$(kubectl get deployments | awk '{print $1}' | sed '1d')
+deployments=($deployments)
 
 # for i in "${!app_labels[@]}"; do
 #     echo "$i=>${app_labels[i]}"
@@ -42,12 +42,12 @@ app_labels=($app_labels)
 #     exit 1
 # fi
 
-for i in "${!app_labels[@]}"; do
+for i in "${!deployments[@]}"; do
     output="wasme ${command} istio ${filter_name} \
     --id=${id}\
     --namespace=${namespace}\
-    --labels=app=${app_labels[i]}\
-    --config=\"{'name': '${app_labels[i]}'}\""
+    --labels=app=${deployments[i]}\
+    --config=\"{'name': '${deployments[i]}'}\""
 
     echo $output
 done

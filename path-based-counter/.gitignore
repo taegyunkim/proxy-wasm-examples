@@ -2,4 +2,4 @@ bazel-bin
 bazel-out
 bazel-testlogs
 bazel-workspace
-bazel-tracing-cpp
+bazel-path-based-counter

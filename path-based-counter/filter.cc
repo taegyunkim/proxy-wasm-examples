@@ -6,39 +6,42 @@
 #include "google/protobuf/util/json_util.h"
 #include "proxy_wasm_intrinsics.h"
 
-class AddHeaderRootContext : public RootContext {
+class PathBasedCounterRootContext : public RootContext {
 public:
-  explicit AddHeaderRootContext(uint32_t id, StringView root_id)
-      : RootContext(id, root_id) {}
+  explicit PathBasedCounterRootContext(uint32_t id, StringView root_id)
+      : RootContext(id, root_id) {
+    counter_ = Counter<>::New("num_requests");
+  }
   bool onConfigure(size_t /* configuration_size */) override;
 
   unsigned long getNextSpanId() { return next_span_id_++; }
 
   std::string name_;
+  Counter<> *counter_;
 
 private:
   unsigned long next_span_id_;
 };
 
-class AddHeaderContext : public Context {
+class PathBasedCounterContext : public Context {
 public:
-  explicit AddHeaderContext(uint32_t id, RootContext *root)
-      : Context(id, root),
-        root_(static_cast<AddHeaderRootContext *>(static_cast<void *>(root))) {}
+  explicit PathBasedCounterContext(uint32_t id, RootContext *root)
+      : Context(id, root), root_(static_cast<PathBasedCounterRootContext *>(
+                               static_cast<void *>(root))) {}
 
   FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
 
 private:
-  AddHeaderRootContext *root_;
+  PathBasedCounterRootContext *root_;
 };
 
 static RegisterContextFactory
-    register_AddHeaderContext(CONTEXT_FACTORY(AddHeaderContext),
-                              ROOT_FACTORY(AddHeaderRootContext),
-                              "add_header_root_id");
+    register_PathBasedCounterContext(CONTEXT_FACTORY(PathBasedCounterContext),
+                                     ROOT_FACTORY(PathBasedCounterRootContext),
+                                     "path_based_counter_root_id");
 
-bool AddHeaderRootContext::onConfigure(size_t) {
+bool PathBasedCounterRootContext::onConfigure(size_t) {
   auto conf = getConfiguration();
   Config config;
 
@@ -53,41 +56,43 @@ bool AddHeaderRootContext::onConfigure(size_t) {
   return true;
 }
 
-FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
+FilterHeadersStatus PathBasedCounterContext::onRequestHeaders(uint32_t) {
   if (getRequestHeader("x-wasm-trace-id")->data() == nullptr) {
     addRequestHeader("x-wasm-trace-id", std::to_string(id()));
   }
   LOG_WARN("x-wasm-trace-id: " +
            getRequestHeader("x-wasm-trace-id")->toString());
 
-  std::string parent_span_id = getRequestHeader("x-wasm-span-id")->toString();
+  auto parent_span_id = getRequestHeader("x-wasm-span-id");
   std::string current_span_id =
       root_->name_ + std::to_string(root_->getNextSpanId());
 
-  if (parent_span_id.empty()) {
+  if (parent_span_id->data() == nullptr) {
     LOG_WARN("root: " + current_span_id);
     addRequestHeader("x-wasm-span-id", current_span_id);
   } else {
-    LOG_WARN(parent_span_id + " -> " + current_span_id);
+    LOG_WARN(parent_span_id->toString() + " -> " + current_span_id);
     replaceRequestHeader("x-wasm-span-id", current_span_id);
   }
 
-  auto result = getRequestHeaderPairs();
-  auto pairs = result->pairs();
-  for (const auto &p : pairs) {
-    LOG_WARN(std::string(p.first) + std::string(" -> ") +
-             std::string(p.second));
-  }
+//   auto result = getRequestHeaderPairs();
+//   auto pairs = result->pairs();
+//   for (const auto &p : pairs) {
+//     LOG_WARN(std::string(p.first) + std::string(" -> ") +
+//              std::string(p.second));
+//   }
+
+  root_->counter_->increment(1);
   return FilterHeadersStatus::Continue;
 }
 
-FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
-  auto result = getResponseHeaderPairs();
-  auto pairs = result->pairs();
-  for (const auto &p : pairs) {
-    LOG_WARN(std::string(p.first) + std::string(" -> ") +
-             std::string(p.second));
-  }
+FilterHeadersStatus PathBasedCounterContext::onResponseHeaders(uint32_t) {
+//   auto result = getResponseHeaderPairs();
+//   auto pairs = result->pairs();
+//   for (const auto &p : pairs) {
+//     LOG_WARN(std::string(p.first) + std::string(" -> ") +
+//              std::string(p.second));
+//   }
 
   // Sanity check this filter is installed and running.
   addResponseHeader("hello", "world");
