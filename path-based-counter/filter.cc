@@ -57,42 +57,40 @@ bool PathBasedCounterRootContext::onConfigure(size_t) {
 }
 
 FilterHeadersStatus PathBasedCounterContext::onRequestHeaders(uint32_t) {
-//   if (getRequestHeader("x-wasm-trace-id")->data() == nullptr) {
-//     addRequestHeader("x-wasm-trace-id", std::to_string(id()));
-//   }
-//   LOG_WARN("x-wasm-trace-id: " +
-//            getRequestHeader("x-wasm-trace-id")->toString());
-
-//   auto parent_span_id = getRequestHeader("x-wasm-span-id");
-//   std::string current_span_id =
-//       root_->name_ + std::to_string(root_->getNextSpanId());
-
-//   if (parent_span_id->data() == nullptr) {
-//     LOG_WARN("root: " + current_span_id);
-//     addRequestHeader("x-wasm-span-id", current_span_id);
-//   } else {
-//     LOG_WARN(parent_span_id->toString() + " -> " + current_span_id);
-//     replaceRequestHeader("x-wasm-span-id", current_span_id);
-//   }
-
-  auto result = getRequestHeaderPairs();
-  auto pairs = result->pairs();
-  for (const auto &p : pairs) {
-    LOG_WARN(std::string(p.first) + std::string(" -> ") +
-             std::string(p.second));
+  auto path_header = getRequestHeader(":path");
+  if (path_header->data() == nullptr) {
+    return FilterHeadersStatus::Continue;
   }
+
+  auto path = path_header->toString();
+  auto cumulative_path = getRequestHeader("x-wasm-path");
+  if (cumulative_path->data() == nullptr) {
+    addRequestHeader("x-wasm-path", path);
+    LOG_WARN("x-wasm-path:" + path);
+  } else {
+    replaceRequestHeader("x-wasm-path",
+                         cumulative_path->toString() + "," + path);
+    LOG_WARN("x-wasm-path:" + cumulative_path->toString() + "," + path);
+  }
+
+  // auto result = getRequestHeaderPairs();
+  // auto pairs = result->pairs();
+  // for (const auto &p : pairs) {
+  //   LOG_WARN(std::string(p.first) + std::string(" -> ") +
+  //            std::string(p.second));
+  // }
 
   root_->counter_->increment(1);
   return FilterHeadersStatus::Continue;
 }
 
 FilterHeadersStatus PathBasedCounterContext::onResponseHeaders(uint32_t) {
-//   auto result = getResponseHeaderPairs();
-//   auto pairs = result->pairs();
-//   for (const auto &p : pairs) {
-//     LOG_WARN(std::string(p.first) + std::string(" -> ") +
-//              std::string(p.second));
-//   }
+  // auto result = getResponseHeaderPairs();
+  // auto pairs = result->pairs();
+  // for (const auto &p : pairs) {
+  //   LOG_WARN(std::string(p.first) + std::string(" -> ") +
+  //            std::string(p.second));
+  // }
 
   // Sanity check this filter is installed and running.
   addResponseHeader("hello", "world");
