@@ -19,7 +19,7 @@ TEST(FilterTest, ParseName) {
 
 TEST(FilterTest, RegexTest) {
   const std::regex base_regex(
-      ".*,/RecommendationService.*,/ProductCatalogService.*");
+      ".*,.*RecommendationService.*,.*ProductCatalogService.*");
 
   ASSERT_TRUE(
       std::regex_match("/product/3,/RecommendationService.ListRecommendations,/"
@@ -30,8 +30,10 @@ TEST(FilterTest, RegexTest) {
                        "ProductCatalogService.ListProducts",
                        base_regex));
 
-  ASSERT_FALSE(
-
-      std::regex_match("/product/3/,/ProductCatalogService.GetProduct",
-                       base_regex));
+  ASSERT_FALSE(std::regex_match("/product/3/,/ProductCatalogService.GetProduct",
+                                base_regex));
+  ASSERT_TRUE(std::regex_match(
+      "/cart/checkout,/hipstershop.RecommendationService/ListRecommendations,/"
+      "hipstershop.ProductCatalogService/ListProducts",
+      base_regex));
 }
