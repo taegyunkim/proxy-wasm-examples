@@ -16,3 +16,22 @@ TEST(FilterTest, ParseName) {
 
   EXPECT_EQ(config.name(), "productpage-v1");
 }
+
+TEST(FilterTest, RegexTest) {
+  const std::regex base_regex(
+      ".*,/RecommendationService.*,/ProductCatalogService.*");
+
+  ASSERT_TRUE(
+      std::regex_match("/product/3,/RecommendationService.ListRecommendations,/"
+                       "ProductCatalogService.ListProducts",
+                       base_regex));
+  ASSERT_TRUE(
+      std::regex_match("/cart,/RecommendationService.ListRecommendations,/"
+                       "ProductCatalogService.ListProducts",
+                       base_regex));
+
+  ASSERT_FALSE(
+
+      std::regex_match("/product/3/,/ProductCatalogService.GetProduct",
+                       base_regex));
+}
