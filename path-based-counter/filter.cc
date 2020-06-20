@@ -1,4 +1,5 @@
 // NOLINT(namespace-envoy)
+#include <regex>
 #include <string>
 #include <unordered_map>
 
@@ -62,25 +63,26 @@ FilterHeadersStatus PathBasedCounterContext::onRequestHeaders(uint32_t) {
     return FilterHeadersStatus::Continue;
   }
 
-  auto path = path_header->toString();
+  auto current_path = path_header->toString();
   auto cumulative_path = getRequestHeader("x-wasm-path");
   if (cumulative_path->data() == nullptr) {
-    addRequestHeader("x-wasm-path", path);
-    LOG_WARN("x-wasm-path:" + path);
+    addRequestHeader("x-wasm-path", current_path);
+    LOG_WARN("x-wasm-path:" + current_path);
   } else {
-    replaceRequestHeader("x-wasm-path",
-                         cumulative_path->toString() + "," + path);
-    LOG_WARN("x-wasm-path:" + cumulative_path->toString() + "," + path);
+    std::string path = cumulative_path->toString() + "," + current_path;
+
+    replaceRequestHeader("x-wasm-path", path);
+    LOG_WARN("x-wasm-path:" + path);
+
+    const std::regex base_regex(
+        ".*,/RecommendationService.*,/ProductCatalogService.*");
+
+    if (std::regex_match(path, base_regex)) {
+      LOG_WARN("Incremented counter.");
+      root_->counter_->increment(1);
+    }
   }
 
-  // auto result = getRequestHeaderPairs();
-  // auto pairs = result->pairs();
-  // for (const auto &p : pairs) {
-  //   LOG_WARN(std::string(p.first) + std::string(" -> ") +
-  //            std::string(p.second));
-  // }
-
-  root_->counter_->increment(1);
   return FilterHeadersStatus::Continue;
 }
 
