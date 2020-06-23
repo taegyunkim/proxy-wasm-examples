@@ -63,6 +63,9 @@ FilterHeadersStatus PathBasedCounterContext::onRequestHeaders(uint32_t) {
     return FilterHeadersStatus::Continue;
   }
 
+  // NOTE: Custom headers are not auto-coalesced, so manually accumulate as
+  // following. For more details refer:
+  // https://github.com/envoyproxy/envoy/issues/9221
   auto cumulative_path = getRequestHeader("x-wasm-path");
   if (cumulative_path->data() == nullptr) {
     addRequestHeader("x-wasm-path", workload_name);
