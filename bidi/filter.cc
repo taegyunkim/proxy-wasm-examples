@@ -74,7 +74,7 @@ FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
     auto header = getRequestHeader("x-wasm");
     std::string header_value = "";
     if (header->data() != nullptr) {
-      header_value = header->toString() + ",";
+      header_value = header->toString() + "-";
     }
     // Append workload name to x-wasm header
     header_value += workload_name;
@@ -131,7 +131,7 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
       if (entry == root_->backward_trace_ids_to_headers_.end()) {
         root_->backward_trace_ids_to_headers_[b3_span_id_] = header->toString();
       } else {
-        entry->second += header->toString();
+        entry->second += "," + header->toString();
       }
 
       LOG_WARN("outbound onResponseHeaders: " + b3_span_id_ + " -> " +
