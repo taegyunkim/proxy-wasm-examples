@@ -57,10 +57,12 @@ static RegisterContextFactory
 bool BidiRootContext::onConfigure(size_t) { return true; }
 
 FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
-  if (!getValue({"request", "headers", "x-b3-spanid"}, &b3_span_id_)) {
-    LOG_WARN("x-b3-spanid not found");
+  auto span_id = getRequestHeader("x-b3-spanid");
+  if (span_id == nullptr) {
+    LOG_WARN("x-b3-spanid not found!");
     return FilterHeadersStatus::Continue;
   }
+  b3_span_id_ = span_id->toString();
 
   if (direction_ == TrafficDirection::Inbound) {
     // Get workload name
