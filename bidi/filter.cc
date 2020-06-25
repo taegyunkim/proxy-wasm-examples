@@ -37,7 +37,7 @@ public:
   explicit BidiContext(uint32_t id, RootContext *root)
       : Context(id, root),
         root_(static_cast<BidiRootContext *>(static_cast<void *>(root))),
-        b3_span_id_("") {
+        b3_trace_id_(""), b3_span_id_("") {
     direction_ = getTrafficDirection();
   }
 
@@ -46,6 +46,7 @@ public:
 
 private:
   BidiRootContext *root_;
+  std::string b3_trace_id_;
   std::string b3_span_id_;
   TrafficDirection direction_;
 };
@@ -57,8 +58,15 @@ static RegisterContextFactory
 bool BidiRootContext::onConfigure(size_t) { return true; }
 
 FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
+  auto trace_id = getRequestHeader("x-b3-traceid");
+  if (trace_id->data() == nullptr) {
+    LOG_WARN("x-b3-traceid not found!");
+    return FilterHeadersStatus::Continue;
+  }
+  b3_trace_id_ = trace_id->toString();
+
   auto span_id = getRequestHeader("x-b3-spanid");
-  if (span_id == nullptr) {
+  if (span_id->data() == nullptr) {
     LOG_WARN("x-b3-spanid not found!");
     return FilterHeadersStatus::Continue;
   }
@@ -99,6 +107,10 @@ FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
 }
 
 FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
+  if (b3_trace_id_ == "") {
+    LOG_WARN("x-b3-traceid not set");
+    return FilterHeadersStatus::Continue;
+  }
   if (b3_span_id_ == "") {
     LOG_WARN("x-b3-spanid not set");
     return FilterHeadersStatus::Continue;
@@ -127,8 +139,12 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
       }
     }
   } else if (direction_ == TrafficDirection::Outbound) {
+    // Received response from another service we called.
+    // Collect x-wasm header value.
     auto header = getResponseHeader("x-wasm");
     if (header->data() != nullptr) {
+      // We could have called multiple other serivces, so we join them into a
+      // single string separated by commas.
       auto entry = root_->backward_trace_ids_to_headers_.find(b3_span_id_);
       if (entry == root_->backward_trace_ids_to_headers_.end()) {
         root_->backward_trace_ids_to_headers_[b3_span_id_] = header->toString();
@@ -136,7 +152,7 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
         entry->second += "," + header->toString();
       }
 
-      LOG_WARN("outbound onResponseHeaders: " + b3_span_id_ + " -> " +
+      LOG_WARN("outbound onResponseHeaders: " + b3_span_id_ + ": x-wasm -> " +
                root_->backward_trace_ids_to_headers_[b3_span_id_]);
     } else {
       LOG_WARN("outbound onResponseHeaders: x-wasm not found");
