@@ -1,13 +1,13 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: frontend-example-filter
+  name: productcatalogservice-example-filter
   namespace: default
 spec:
   configPatches:
     - applyTo: HTTP_FILTER
       match:
-        context: SIDECAR_OUTBOUND
+        context: SIDECAR_INBOUND
         listener:
           filterChain:
             filter:
@@ -29,4 +29,4 @@ spec:
           name: envoy.filters.http.wasm
   workloadSelector:
     labels:
-      app: frontend
+      app: productcatalogservice

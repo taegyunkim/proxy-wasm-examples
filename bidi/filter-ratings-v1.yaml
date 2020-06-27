@@ -1,13 +1,13 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: frontend-example-filter
+  name: ratings-v1-example-filter
   namespace: default
 spec:
   configPatches:
     - applyTo: HTTP_FILTER
       match:
-        context: SIDECAR_OUTBOUND
+        context: ANY
         listener:
           filterChain:
             filter:
@@ -29,4 +29,5 @@ spec:
           name: envoy.filters.http.wasm
   workloadSelector:
     labels:
-      app: frontend
+      app: ratings
+      version: v1
