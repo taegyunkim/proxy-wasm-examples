@@ -47,3 +47,20 @@ TEST(FilterTest, SplitStr) {
 
   EXPECT_EQ(result, "x-a-b,x-a-c,x-a-d");
 }
+
+TEST(FilterTest, SplitStrNoDelim) {
+  std::string s{"a-b"};
+  std::regex delimiter(",");
+  std::sregex_token_iterator it{s.begin(), s.end(), delimiter, -1};
+  std::vector<std::string> words{it, {}};
+  EXPECT_THAT(words, testing::ElementsAre("a-b"));
+
+  std::string result = std::accumulate(
+      words.begin(), words.end(), std::string(),
+      [](const std::string &a, const std::string &b) -> std::string {
+        return a + (a.length() > 0 ? "," : "") + "x-" + b;
+      });
+
+  EXPECT_EQ(result, "x-a-b");
+
+}
