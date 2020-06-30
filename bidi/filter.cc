@@ -37,9 +37,6 @@ public:
   explicit BidiRootContext(uint32_t id, StringView root_id)
       : RootContext(id, root_id) {}
   bool onConfigure(size_t /* configuration_size */) override;
-
-  std::map<std::string, std::string> forward_trace_ids_to_headers_;
-  std::map<std::string, std::string> backward_trace_ids_to_headers_;
 };
 
 class BidiContext : public Context {
@@ -116,44 +113,6 @@ FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
              b3_parent_span_id_);
   }
 
-  if (direction_ == TrafficDirection::Inbound) {
-    // Get workload name
-    std::string workload_name;
-    if (!getValue({"node", "metadata", "WORKLOAD_NAME"}, &workload_name)) {
-      LOG_WARN("inbound: Workload name not found");
-      return FilterHeadersStatus::Continue;
-    }
-
-    // Check incoming request has x-wasm header.
-    auto header = getRequestHeader("x-wasm");
-    std::string header_value = "";
-    if (header->data() != nullptr) {
-      header_value = header->toString() + "-";
-    }
-
-    // Append workload name to x-wasm header
-    header_value += workload_name;
-    LOG_WARN("inbound: " + b3_span_id_ + " -> " + header_value);
-    // Store it for later.
-    root_->forward_trace_ids_to_headers_[b3_span_id_] = header_value;
-  } else if (direction_ == TrafficDirection::Outbound) {
-    // Retrieve saved x-wasm header using b3_span_id.
-    auto entry = root_->forward_trace_ids_to_headers_.find(b3_parent_span_id_);
-    if (entry == root_->forward_trace_ids_to_headers_.end()) {
-      LOG_WARN("Not found " + b3_parent_span_id_);
-
-      LOG_WARN("size: " + std::to_string(root_->forward_trace_ids_to_headers_.size()));
-      for (const auto &pair : root_->forward_trace_ids_to_headers_) {
-        LOG_WARN(pair.first + " " + pair.second);
-      }
-
-      return FilterHeadersStatus::Continue;
-    }
-    // Append it to request header.
-    addRequestHeader("x-wasm", entry->second);
-    LOG_WARN("outbound: x-wasm -> " + entry->second);
-  }
-
   return FilterHeadersStatus::Continue;
 }
 
@@ -195,46 +154,39 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
   }
 
   if (direction_ == TrafficDirection::Inbound) {
-    // inbound response processing
-    auto backward_entry =
-        root_->backward_trace_ids_to_headers_.find(b3_span_id_);
-    if (backward_entry != root_->backward_trace_ids_to_headers_.end()) {
-      auto header_value = backward_entry->second;
-      addResponseHeader("x-wasm", header_value);
+    std::string workload_name;
+    if (!getValue({"node", "metadata", "WORKLOAD_NAME"}, &workload_name)) {
+      LOG_WARN("inbound: Workload name not found");
+      return FilterHeadersStatus::Continue;
+    }
 
-      LOG_WARN("inbound: x-wasm -> " + header_value);
-      // root_->backward_trace_ids_to_headers_.erase(b3_span_id_);
-      // root_->forward_trace_ids_to_headers_.erase(b3_span_id_);
+    // inbound response processing
+    WasmDataPtr shared_data;
+    WasmResult result = getSharedData(b3_span_id_, &shared_data);
+    if (result == WasmResult::Ok && shared_data->data() != nullptr) {
+      auto header_value = shared_data->toString();
+      addResponseHeader("x-wasm", workload_name + "-" + header_value);
+      LOG_WARN("inbound: x-wasm -> " + workload_name + "-" + header_value);
     } else {
-      auto forward_entry =
-          root_->forward_trace_ids_to_headers_.find(b3_span_id_);
-      if (forward_entry != root_->forward_trace_ids_to_headers_.end()) {
-        auto header_value = forward_entry->second;
-        addResponseHeader("x-wasm", header_value);
-        LOG_WARN("inbound: x-wasm -> " + header_value);
-        // root_->forward_trace_ids_to_headers_.erase(b3_span_id_);
-      } else {
-        LOG_WARN("no headers found.");
-      }
+      addResponseHeader("x-wasm", workload_name);
+      LOG_WARN("inbound: x-wasm -> " + workload_name);
     }
   } else if (direction_ == TrafficDirection::Outbound) {
     // Received response from another service we called.
     // Collect x-wasm header value.
     auto header = getResponseHeader("x-wasm");
     if (header->data() != nullptr) {
-      // We could have called multiple other serivces, so we join them into a
-      // single string separated by commas.
-      auto entry =
-          root_->backward_trace_ids_to_headers_.find(b3_parent_span_id_);
-      if (entry == root_->backward_trace_ids_to_headers_.end()) {
-        root_->backward_trace_ids_to_headers_[b3_parent_span_id_] =
-            header->toString();
+      WasmDataPtr shared_data;
+      WasmResult result = getSharedData(b3_parent_span_id_, &shared_data);
+      if (result == WasmResult::Ok && shared_data->data() != nullptr) {
+        LOG_WARN("outbound: x-wasm -> " + shared_data->toString() + "," +
+                 header->toString());
+        setSharedData(b3_parent_span_id_,
+                      shared_data->toString() + "," + header->toString());
       } else {
-        entry->second += "," + header->toString();
+        LOG_WARN("outbound: x-wasm -> " + header->toString());
+        setSharedData(b3_parent_span_id_, header->toString());
       }
-
-      LOG_WARN("outbound: " + b3_parent_span_id_ + ": x-wasm -> " +
-               root_->backward_trace_ids_to_headers_[b3_parent_span_id_]);
     } else {
       LOG_WARN("outbound: x-wasm not found");
     }
