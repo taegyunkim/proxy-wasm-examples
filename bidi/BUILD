@@ -26,3 +26,16 @@ cc_binary(
         "@envoy_wasm_api//:proxy_wasm_intrinsics",
     ],
 )
+
+cc_test(
+    name = "filter_test",
+    srcs = [
+        "filter_test.cc",
+    ],
+    deps = [
+        ":filter_cc_proto",
+        "@com_google_protobuf//:protobuf_lite",
+        "@gtest",
+        "@gtest//:gtest_main",
+    ],
+)
