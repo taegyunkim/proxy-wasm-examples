@@ -1,5 +1,7 @@
+#include <regex>
 #include <string>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 TEST(FilterTest, MapUpdate) {
@@ -27,4 +29,12 @@ TEST(FilterTest, MapUpdate) {
   ASSERT_EQ(3, spans_to_headers.size());
 
   it = spans_to_headers.find("c");
+}
+
+TEST(FilterTest, SplitStr) {
+  std::string s{"a-b,a-c,a-d"};
+  std::regex delimiter(",");
+  std::sregex_token_iterator it{s.begin(), s.end(), delimiter, -1};
+  std::vector<std::string> words{it, {}};
+  EXPECT_THAT(words, testing::ElementsAre("a-b", "a-c", "a-d"));
 }
