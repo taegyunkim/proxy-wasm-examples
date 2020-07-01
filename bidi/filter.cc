@@ -1,5 +1,7 @@
 // NOLINT(namespace-envoy)
 #include <map>
+#include <numeric>
+#include <regex>
 #include <string>
 #include <unordered_map>
 
@@ -165,8 +167,23 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
     WasmResult result = getSharedData(b3_span_id_, &shared_data);
     if (result == WasmResult::Ok && shared_data->data() != nullptr) {
       auto header_value = shared_data->toString();
-      addResponseHeader("x-wasm", workload_name + "-" + header_value);
-      LOG_WARN("inbound: x-wasm -> " + workload_name + "-" + header_value);
+
+      // Multiple paths could exist separated by commas.
+      // split string using ','
+      std::regex delimiter(",");
+      std::sregex_token_iterator it{header_value.begin(), header_value.end(),
+                                    delimiter, -1};
+      std::vector<std::string> words{it, {}};
+
+      // Now join them and attach workload name in front of each entry.
+      std::string result = std::accumulate(
+          words.begin(), words.end(), std::string(),
+          [workload_name](const std::string &a,
+                          const std::string &b) -> std::string {
+            return a + (a.length() > 0 ? "," : "") + workload_name + "-" + b;
+          });
+      addResponseHeader("x-wasm", result);
+      LOG_WARN("inbound: x-wasm -> " + result);
     } else {
       addResponseHeader("x-wasm", workload_name);
       LOG_WARN("inbound: x-wasm -> " + workload_name);
