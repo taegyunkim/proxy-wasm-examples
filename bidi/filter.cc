@@ -46,8 +46,7 @@ public:
   explicit BidiContext(uint32_t id, RootContext *root)
       : Context(id, root),
         root_(static_cast<BidiRootContext *>(static_cast<void *>(root))),
-        b3_trace_id_(""), b3_span_id_(""), b3_parent_span_id_(""),
-        grpc_trace_bin_("") {
+        b3_trace_id_(""), b3_span_id_(""), b3_parent_span_id_("") {
     direction_ = getTrafficDirection();
   }
 
@@ -59,7 +58,6 @@ private:
   std::string b3_trace_id_;
   std::string b3_span_id_;
   std::string b3_parent_span_id_;
-  std::string grpc_trace_bin_;
   TrafficDirection direction_;
 };
 
@@ -74,15 +72,6 @@ FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
   // for (const auto &pair : header_pairs) {
   //   LOG_WARN(trafficDirectionToString(direction_) + ": " +
   //            std::string(pair.first) + " --> " + std::string(pair.second));
-  // }
-
-  // auto grpc_trace_bin = getRequestHeader("grpc-trace-bin");
-  // if (grpc_trace_bin->data() != nullptr) {
-  //   grpc_trace_bin_ = grpc_trace_bin->toString();
-  //   LOG_WARN(trafficDirectionToString(direction_) + ": " + grpc_trace_bin_);
-  // } else {
-  //   LOG_WARN(trafficDirectionToString(direction_) +
-  //            " grpc-trace-bin not found");
   // }
 
   auto trace_id = getRequestHeader("x-b3-traceid");
@@ -119,13 +108,6 @@ FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
 }
 
 FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
-  // if (grpc_trace_bin_ != "") {
-  //   LOG_WARN(trafficDirectionToString(direction_) + ": " + grpc_trace_bin_);
-  // } else {
-  //   LOG_WARN(trafficDirectionToString(direction_) +
-  //            " grpc-trace-bin not found");
-  // }
-
   // auto header_pairs = getResponseHeaderPairs()->pairs();
   // for (const auto &pair : header_pairs) {
   //   LOG_WARN(trafficDirectionToString(direction_) + ": " +
