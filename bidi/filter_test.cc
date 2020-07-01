@@ -1,5 +1,6 @@
 #include <numeric>
 #include <regex>
+#include <set>
 #include <string>
 
 #include "gmock/gmock.h"
@@ -55,11 +56,23 @@ TEST(FilterTest, SplitStrNoDelim) {
   std::vector<std::string> words{it, {}};
   EXPECT_THAT(words, testing::ElementsAre("a-b"));
 
+  for (auto &w : words) {
+    w = "x-" + w;
+  }
+
   std::string result = std::accumulate(
       words.begin(), words.end(), std::string(),
       [](const std::string &a, const std::string &b) -> std::string {
-        return a + (a.length() > 0 ? "," : "") + "x-" + b;
+        return a + (a.length() > 0 ? "," : "") + b;
       });
 
   EXPECT_EQ(result, "x-a-b");
+}
+
+TEST(FilterTest, SplitToSet) {
+  std::string s{"a-b,a-c,a-d"};
+  std::regex delimiter(",");
+  std::sregex_token_iterator it{s.begin(), s.end(), delimiter, -1};
+  std::set<std::string> words{it, {}};
+  EXPECT_THAT(words, testing::UnorderedElementsAre("a-b", "a-c", "a-d"));
 }
