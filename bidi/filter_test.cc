@@ -62,5 +62,4 @@ TEST(FilterTest, SplitStrNoDelim) {
       });
 
   EXPECT_EQ(result, "x-a-b");
-
 }
