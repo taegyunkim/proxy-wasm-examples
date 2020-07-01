@@ -2,6 +2,7 @@
 #include <map>
 #include <numeric>
 #include <regex>
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -37,8 +38,33 @@ std::string trafficDirectionToString(TrafficDirection dir) {
 class BidiRootContext : public RootContext {
 public:
   explicit BidiRootContext(uint32_t id, StringView root_id)
-      : RootContext(id, root_id) {}
+      : RootContext(id, root_id) {
+    std::string workload_name;
+    if (getValue({"node", "metadata", "WORKLOAD_NAME"}, &workload_name)) {
+      workload_name_ = workload_name;
+      LOG_WARN("Intialized workload_name: " + workload_name_);
+
+      if (workload_name_ == "frontend") {
+        paths = {"productpage-v1-details-v1",
+                 "productpage-v1-reviews-v2-ratings-v1"};
+        counter_ = Counter<>::New("wasm_path_based_requests");
+      }
+    } else {
+      LOG_WARN("Failed to set workload name");
+    }
+  }
   bool onConfigure(size_t /* configuration_size */) override;
+
+  StringView getWorkloadName() { return workload_name_; }
+
+  Counter<> *getCounter() { return counter_; }
+
+  const std::vector<std::string> &getPathsVector() { return paths; }
+
+private:
+  std::string workload_name_;
+  Counter<> *counter_ = nullptr;
+  std::vector<std::string> paths;
 };
 
 class BidiContext : public Context {
@@ -88,7 +114,6 @@ FilterHeadersStatus BidiContext::onRequestHeaders(uint32_t) {
   if (span_id->data() == nullptr) {
     LOG_WARN(trafficDirectionToString(direction_) + " " +
              "x-b3-spanid not found!");
-
   } else {
     b3_span_id_ = span_id->toString();
     LOG_WARN(trafficDirectionToString(direction_) + " span_id " + b3_span_id_);
@@ -137,13 +162,8 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
              b3_parent_span_id_);
   }
 
+  StringView workload_name = root_->getWorkloadName();
   if (direction_ == TrafficDirection::Inbound) {
-    std::string workload_name;
-    if (!getValue({"node", "metadata", "WORKLOAD_NAME"}, &workload_name)) {
-      LOG_WARN("inbound: Workload name not found");
-      return FilterHeadersStatus::Continue;
-    }
-
     // inbound response processing
     WasmDataPtr shared_data;
     WasmResult result = getSharedData(b3_span_id_, &shared_data);
@@ -156,19 +176,38 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
       std::sregex_token_iterator it{header_value.begin(), header_value.end(),
                                     delimiter, -1};
       std::vector<std::string> words{it, {}};
+      for (auto &w : words) {
+        w = std::string(workload_name) + w;
+      }
+      std::set<std::string> words_set{words.begin(), words.end()};
+
+      if (workload_name == "frontend") {
+        bool matches = true;
+        for (const auto &path : root_->getPathsVector()) {
+          if (words_set.find(path) == words_set.end()) {
+            matches = false;
+            break;
+          }
+        }
+        if (matches) {
+          auto *counter = root_->getCounter();
+          counter->increment(1);
+          LOG_WARN("Counter incremented");
+        }
+      }
 
       // Now join them and attach workload name in front of each entry.
-      std::string result = std::accumulate(
-          words.begin(), words.end(), std::string(),
-          [workload_name](const std::string &a,
-                          const std::string &b) -> std::string {
-            return a + (a.length() > 0 ? "," : "") + workload_name + "-" + b;
-          });
-      addResponseHeader("x-wasm", result);
-      LOG_WARN("inbound: x-wasm -> " + result);
+      std::string joined =
+          std::accumulate(words.begin(), words.end(), std::string(),
+                          [workload_name](const std::string &a,
+                                          const std::string &b) -> std::string {
+                            return a + (a.length() > 0 ? "," : "") + "-" + b;
+                          });
+      addResponseHeader("x-wasm", joined);
+      LOG_WARN("inbound: x-wasm -> " + joined);
     } else {
-      addResponseHeader("x-wasm", workload_name);
-      LOG_WARN("inbound: x-wasm -> " + workload_name);
+      addResponseHeader("x-wasm", std::string(workload_name));
+      LOG_WARN("inbound: x-wasm -> " + std::string(workload_name));
     }
   } else if (direction_ == TrafficDirection::Outbound) {
     // Received response from another service we called.
