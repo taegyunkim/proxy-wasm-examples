@@ -177,7 +177,7 @@ FilterHeadersStatus BidiContext::onResponseHeaders(uint32_t) {
                                     delimiter, -1};
       std::vector<std::string> words{it, {}};
       for (auto &w : words) {
-        w = std::string(workload_name) + w;
+        w = std::string(workload_name) + "-" + w;
       }
       std::set<std::string> words_set{words.begin(), words.end()};
 
