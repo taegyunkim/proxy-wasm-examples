@@ -55,6 +55,12 @@ new_git_repository(
     build_file = '//bazel/external:envoy-wasm-api.BUILD',
 )
 
+git_repository(
+    name = "gtest",
+    remote = "https://github.com/google/googletest",
+    tag = "release-1.10.0",
+)
+
 http_archive(
     name = "rules_proto",
     sha256 = "602e7161d9195e50246177e7c55b2f39950a9cf7366f74ed5f22fd45750cd208",

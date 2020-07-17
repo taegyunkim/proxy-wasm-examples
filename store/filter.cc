@@ -1,79 +1,238 @@
 // NOLINT(namespace-envoy)
+#include <map>
+#include <numeric>
+#include <regex>
+#include <set>
 #include <string>
 #include <unordered_map>
 
-#include "google/protobuf/util/json_util.h"
 #include "proxy_wasm_intrinsics.h"
-#include "filter.pb.h"
 
-class AddHeaderRootContext : public RootContext {
+// TrafficDirection is a mirror of envoy xDS traffic direction.
+// As defined in istio/proxy/extensions/common/context.h
+enum class TrafficDirection : int64_t {
+  Unspecified = 0,
+  Inbound = 1,
+  Outbound = 2,
+};
+
+// Retrieves the traffic direction from the configuration context.
+TrafficDirection getTrafficDirection() {
+  int64_t direction;
+  if (getValue({"listener_direction"}, &direction)) {
+    return static_cast<TrafficDirection>(direction);
+  }
+  return TrafficDirection::Unspecified;
+}
+
+std::string trafficDirectionToString(TrafficDirection dir) {
+  if (dir == TrafficDirection::Unspecified) {
+    return "unspecified";
+  } else if (dir == TrafficDirection::Inbound) {
+    return "inbound";
+  } else {
+    return "outbound";
+  }
+}
+
+class RedisStoreRootContext : public RootContext {
 public:
-  explicit AddHeaderRootContext(uint32_t id, StringView root_id) : RootContext(id, root_id) {}
+  explicit RedisStoreRootContext(uint32_t id, StringView root_id)
+      : RootContext(id, root_id) {
+    std::string workload_name;
+    if (getValue({"node", "metadata", "WORKLOAD_NAME"}, &workload_name)) {
+      workload_name_ = workload_name;
+      LOG_WARN("Intialized workload_name: " + workload_name_);
+
+      if (workload_name_ == "productpage-v1") {
+        paths = {"productpage-v1-details-v1",
+                 "productpage-v1-reviews-v2-ratings-v1"};
+      }
+    } else {
+      LOG_WARN("Failed to set workload name");
+    }
+  }
   bool onConfigure(size_t /* configuration_size */) override;
 
-  bool onStart(size_t) override;
+  StringView getWorkloadName() { return workload_name_; }
 
-  std::string header_name_;
-  std::string header_value_;
-};
+  const std::vector<std::string> &getPathsVector() { return paths; }
 
-class AddHeaderContext : public Context {
-public:
-  explicit AddHeaderContext(uint32_t id, RootContext* root) : Context(id, root), root_(static_cast<AddHeaderRootContext*>(static_cast<void*>(root))) {}
-
-  void onCreate() override;
-  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
-  FilterDataStatus onRequestBody(size_t body_buffer_length, bool end_of_stream) override;
-  FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
-  void onDone() override;
-  void onLog() override;
-  void onDelete() override;
 private:
-
-  AddHeaderRootContext* root_;
+  std::string workload_name_;
+  std::vector<std::string> paths;
 };
-static RegisterContextFactory register_AddHeaderContext(CONTEXT_FACTORY(AddHeaderContext),
-                                                      ROOT_FACTORY(AddHeaderRootContext),
-                                                      "add_header_root_id");
 
-bool AddHeaderRootContext::onConfigure(size_t) { 
-  auto conf = getConfiguration();
-  Config config;
-  
-  google::protobuf::util::JsonParseOptions options;
-  options.case_insensitive_enum_parsing = true;
-  options.ignore_unknown_fields = false;
+class RedisStoreContext : public Context {
+public:
+  explicit RedisStoreContext(uint32_t id, RootContext *root)
+      : Context(id, root),
+        root_(static_cast<RedisStoreRootContext *>(static_cast<void *>(root))),
+        b3_trace_id_(""), b3_span_id_(""), b3_parent_span_id_("") {
+    direction_ = getTrafficDirection();
+  }
 
-  google::protobuf::util::JsonStringToMessage(conf->toString(), &config, options);
-  LOG_DEBUG("onConfigure name " + config.name());
-  LOG_DEBUG("onConfigure " + config.value());
-  header_name_ = config.name();
-  header_value_ = config.value();
-  return true; 
-}
+  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
+  FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
 
-bool AddHeaderRootContext::onStart(size_t) { LOG_DEBUG("onStart"); return true;}
+private:
+  RedisStoreRootContext *root_;
+  std::string b3_trace_id_;
+  std::string b3_span_id_;
+  std::string b3_parent_span_id_;
+  TrafficDirection direction_;
+};
 
-void AddHeaderContext::onCreate() { LOG_DEBUG(std::string("onCreate " + std::to_string(id()))); }
+static RegisterContextFactory
+    register_RedisStoreContext(CONTEXT_FACTORY(RedisStoreContext),
+                               ROOT_FACTORY(RedisStoreRootContext),
+                               "store_root_id");
 
-FilterHeadersStatus AddHeaderContext::onRequestHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onRequestHeaders ") + std::to_string(id()));
+bool RedisStoreRootContext::onConfigure(size_t) { return true; }
+
+FilterHeadersStatus RedisStoreContext::onRequestHeaders(uint32_t) {
+  // auto header_pairs = getRequestHeaderPairs()->pairs();
+  // for (const auto &pair : header_pairs) {
+  //   LOG_WARN(trafficDirectionToString(direction_) + ": " +
+  //            std::string(pair.first) + " --> " + std::string(pair.second));
+  // }
+
+  auto trace_id = getRequestHeader("x-b3-traceid");
+  if (trace_id->data() == nullptr) {
+    LOG_WARN(trafficDirectionToString(direction_) + " " +
+             "x-b3-traceid not found!");
+  } else {
+    b3_trace_id_ = trace_id->toString();
+    LOG_WARN(trafficDirectionToString(direction_) + " trace_id_ " +
+             b3_trace_id_);
+  }
+
+  auto span_id = getRequestHeader("x-b3-spanid");
+  if (span_id->data() == nullptr) {
+    LOG_WARN(trafficDirectionToString(direction_) + " " +
+             "x-b3-spanid not found!");
+  } else {
+    b3_span_id_ = span_id->toString();
+    LOG_WARN(trafficDirectionToString(direction_) + " span_id " + b3_span_id_);
+  }
+
+  auto parent_span_id = getRequestHeader("x-b3-parentspanid");
+  if (parent_span_id->data() == nullptr) {
+    LOG_WARN(trafficDirectionToString(direction_) + " " +
+             "x-b3-parentspanid not found!");
+  } else {
+    b3_parent_span_id_ = parent_span_id->toString();
+    LOG_WARN(trafficDirectionToString(direction_) + " parent_span_id " +
+             b3_parent_span_id_);
+  }
+
   return FilterHeadersStatus::Continue;
 }
 
-FilterHeadersStatus AddHeaderContext::onResponseHeaders(uint32_t) {
-  LOG_DEBUG(std::string("onResponseHeaders ") + std::to_string(id()));
-  addResponseHeader(root_->header_name_, root_->header_value_);
-  replaceResponseHeader("location", "envoy-wasm");
+FilterHeadersStatus RedisStoreContext::onResponseHeaders(uint32_t) {
+  // auto header_pairs = getResponseHeaderPairs()->pairs();
+  // for (const auto &pair : header_pairs) {
+  //   LOG_WARN(trafficDirectionToString(direction_) + ": " +
+  //            std::string(pair.first) + " --> " + std::string(pair.second));
+  // }
+
+  if (b3_trace_id_ == "") {
+    LOG_WARN(trafficDirectionToString(direction_) + " " +
+             "x-b3-traceid not set");
+  } else {
+    LOG_WARN(trafficDirectionToString(direction_) + " trace_id " +
+             b3_trace_id_);
+  }
+
+  if (b3_span_id_ == "") {
+    LOG_WARN(trafficDirectionToString(direction_) + " " +
+             "x-b3-spanid not set");
+  } else {
+    LOG_WARN(trafficDirectionToString(direction_) + " span_id " + b3_span_id_);
+  }
+
+  if (b3_parent_span_id_ == "") {
+    LOG_WARN(trafficDirectionToString(direction_) + " " +
+             "x-b3-parentspanid not set");
+  } else {
+    LOG_WARN(trafficDirectionToString(direction_) + " parent_span_id " +
+             b3_parent_span_id_);
+  }
+
+  StringView workload_name = root_->getWorkloadName();
+  if (direction_ == TrafficDirection::Inbound) {
+    // inbound response processing
+    WasmDataPtr shared_data;
+    WasmResult result = getSharedData(b3_span_id_, &shared_data);
+    if (result == WasmResult::Ok && shared_data->data() != nullptr) {
+      auto header_value = shared_data->toString();
+
+      // Multiple paths could exist separated by commas.
+      // split string using ','
+      std::regex delimiter(",");
+      std::sregex_token_iterator it{header_value.begin(), header_value.end(),
+                                    delimiter, -1};
+      std::vector<std::string> words{it, {}};
+      for (auto &w : words) {
+        w = std::string(workload_name) + "-" + w;
+      }
+      std::set<std::string> words_set{words.begin(), words.end()};
+
+      if (workload_name == "productpage-v1") {
+        bool matches = true;
+        for (const auto &path : root_->getPathsVector()) {
+          if (words_set.find(path) == words_set.end()) {
+            matches = false;
+            break;
+          }
+        }
+        if (matches) {
+          auto context_id = id();
+          auto callback = [context_id](uint32_t, size_t body_size, uint32_t) {
+            LOG_WARN("in callback");
+            getContext(context_id)->setEffectiveContext();
+            auto body =
+                getBufferBytes(BufferType::HttpCallResponseBody, 0, body_size);
+            LOG_WARN(std::string(body->view()));
+          };
+          root()->httpCall("redis:7379/INCR/path-based-counter", {}, "", {},
+                           1000, callback);
+        }
+      }
+
+      // Now join them and attach workload name in front of each entry.
+      std::string joined =
+          std::accumulate(words.begin(), words.end(), std::string(),
+                          [workload_name](const std::string &a,
+                                          const std::string &b) -> std::string {
+                            return a + (a.length() > 0 ? "," : "") + b;
+                          });
+      addResponseHeader("x-wasm", joined);
+      LOG_WARN("inbound: x-wasm -> " + joined);
+    } else {
+      addResponseHeader("x-wasm", std::string(workload_name));
+      LOG_WARN("inbound: x-wasm -> " + std::string(workload_name));
+    }
+  } else if (direction_ == TrafficDirection::Outbound) {
+    // Received response from another service we called.
+    // Collect x-wasm header value.
+    auto header = getResponseHeader("x-wasm");
+    if (header->data() != nullptr) {
+      WasmDataPtr shared_data;
+      WasmResult result = getSharedData(b3_parent_span_id_, &shared_data);
+      if (result == WasmResult::Ok && shared_data->data() != nullptr) {
+        LOG_WARN("outbound: x-wasm -> " + shared_data->toString() + "," +
+                 header->toString());
+        setSharedData(b3_parent_span_id_,
+                      shared_data->toString() + "," + header->toString());
+      } else {
+        LOG_WARN("outbound: x-wasm -> " + header->toString());
+        setSharedData(b3_parent_span_id_, header->toString());
+      }
+    } else {
+      LOG_WARN("outbound: x-wasm not found");
+    }
+  }
+
   return FilterHeadersStatus::Continue;
 }
-
-FilterDataStatus AddHeaderContext::onRequestBody(size_t body_buffer_length, bool end_of_stream) {
-  return FilterDataStatus::Continue;
-}
-
-void AddHeaderContext::onDone() { LOG_DEBUG(std::string("onDone " + std::to_string(id()))); }
-
-void AddHeaderContext::onLog() { LOG_DEBUG(std::string("onLog " + std::to_string(id()))); }
-
-void AddHeaderContext::onDelete() { LOG_DEBUG(std::string("onDelete " + std::to_string(id()))); }
