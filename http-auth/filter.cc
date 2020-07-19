@@ -8,7 +8,6 @@ class HttpAuthRootContext : public RootContext {
 public:
   explicit HttpAuthRootContext(uint32_t id, StringView root_id)
       : RootContext(id, root_id) {}
-  bool onConfigure(size_t /* configuration_size */) override { return true; }
 };
 
 class HttpAuthContext : public Context {
