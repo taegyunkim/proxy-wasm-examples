@@ -1,36 +1,17 @@
-This compiles an example filter for envoy WASM.
+## HTTP-Auth
 
-# build filter
-build with
-```
-bazel build :filter.wasm
-```
+Simulates handling authentication of requests at proxy level. Requests with a header `token` with value `hello` are accepted as authorized while the rest unauthorized. The actual authentication is handled by the Upstream server. Whenever the proxy recieves a request it extracts the `token` header and makes a request to the Upstream server which validates the token and returns a response.
 
-Filter will be in:
-```
-./bazel-bin/filter.wasm
+Deploy:
+
+```bash
+cd http-auth
+make deploy-filtered
 ```
 
-# build config descriptors
+Test:
 
-build descriptors with:
+```bash
+curl  -H "token":"hello" 0.0.0.0:18000 -v # Authorized
+curl  -H "token":"world" 0.0.0.0:18000 -v # Unauthorized
 ```
-bazel build :filter_proto
-```
-
-Descriptors will be in:
-```
-./bazel-bin/filter_proto-descriptor-set.proto.bin
-```
-
-Note: 
-on a mac, please run
-```
-xcode-select --install
-```
-
-and Potentially:
-```
-brew install python@2
-```
-as the python bundled with catalina may have issues with ssl certs.
