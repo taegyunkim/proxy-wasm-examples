@@ -1,5 +1,5 @@
-build:
-	bazel build filter.wasm
+build-upstream:
+	$(MAKE) -C ../upstream
 
 deploy:
 	docker-compose up --build --remove-orphans
@@ -8,10 +8,7 @@ deploy:
 deploy-filtered:
 	docker-compose up --build --remove-orphans | grep "\[wasm\]\|Starting"
 
-run: build deploy
+run: deploy
 
-run-filtered: build deploy-filtered
-
-clean:
-	bazel clean
+run-filtered: deploy-filtered
 
