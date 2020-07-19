@@ -56,7 +56,7 @@ FilterHeadersStatus HttpAuthContext::onRequestHeaders(uint32_t) {
     if (body->toString() == "Authorized") {
       continueRequest();
     } else {
-      sendLocalResponse(403, "", "Acceess forbidden",
+      sendLocalResponse(403, "", "Acceess forbidden\n",
                         {{"Powered-by", "proxy-wasm"}});
     }
   };
