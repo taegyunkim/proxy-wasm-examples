@@ -1,36 +1,27 @@
-This compiles an example filter for envoy WASM.
+## TCP-Metrics
 
-# build filter
-build with
-```
-bazel build :filter.wasm
-```
+Collects simple metrics for every TCP connection and logs it.
 
-Filter will be in:
-```
-./bazel-bin/filter.wasm
+Build filter:
+
+```shell
+bazel build filter.wasm
 ```
 
-# build config descriptors
+Build upstream service (needs to be done once):
 
-build descriptors with:
-```
-bazel build :filter_proto
-```
-
-Descriptors will be in:
-```
-./bazel-bin/filter_proto-descriptor-set.proto.bin
+```shell
+make build-upstream
 ```
 
-Note: 
-on a mac, please run
-```
-xcode-select --install
+Deploy:
+
+```bash
+make deploy-filtered
 ```
 
-and Potentially:
+Test: Check the logs for the metrics.
+
+```bash
+curl 0.0.0.0:18000 -v -d "request body"
 ```
-brew install python@2
-```
-as the python bundled with catalina may have issues with ssl certs.
