@@ -1,7 +1,6 @@
-## Singleton-HTTP-Call
+## TCP packet parse
 
-WASM service calls an upstream service every 2 seconds. Check the logs for
-the response of the request.
+Not sure what was the original intent. It simply captures downstream request body and logs. 
 
 Build filter:
 
