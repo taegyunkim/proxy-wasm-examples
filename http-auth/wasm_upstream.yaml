@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasm-upstream
+  labels:
+    name: wasm-upstream
+spec:
+  selector:
+    matchLabels:
+      app: wasm-upstream
+  template:
+    metadata:
+      labels:
+        app: wasm-upstream
+    spec:
+      containers:
+      - name: wasm-upstream
+        image: docker.io/taegyunk91/wasm-upstream:latest
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wasm-upstream
+spec:
+  type: ClusterIP
+  selector:
+    app: wasm-upstream
+  ports:
+  - name: wasm-upstream
+    port: 8080
+    targetPort: 8080
