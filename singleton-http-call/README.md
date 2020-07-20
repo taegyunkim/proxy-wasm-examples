@@ -1,6 +1,6 @@
 ## Singleton-HTTP-Call
 
-WASM service calls an upstream service every 2 seconds. Check the logs for
+WASM service calls an upstream service every 5 seconds. Check the logs for
 the response of the request.
 
 Build filter:
