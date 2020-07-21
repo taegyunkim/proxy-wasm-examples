@@ -48,12 +48,17 @@ FilterHeadersStatus HttpStoreContext::onRequestHeaders(uint32_t) {
     }
   };
   logWarn("onRequestHeaders");
-  root()->httpCall("store_upstream",
-                   {{":method", "GET"},
-                    {":path", "/store"},
-                    {":authority", "store_upstream"},
-                    {"key", "123"},
-                    {"value", "456"}},
-                   "", {}, 1000, callback);
+
+  auto trace_id = getRequestHeader("x-b3-traceid");
+  if (trace_id != nullptr && trace_id->data() != nullptr) {
+    uint64_t curr_time = getCurrentTimeNanoseconds();
+    root()->httpCall("store_upstream",
+                     {{":method", "GET"},
+                      {":path", "/store"},
+                      {":authority", "store_upstream"},
+                      {"key", trace_id->toString()},
+                      {"value", std::to_string(curr_time)}},
+                     "", {}, 1000, callback);
+  }
   return FilterHeadersStatus::Continue;
 }
