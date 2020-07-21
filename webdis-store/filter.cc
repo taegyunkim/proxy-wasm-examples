@@ -22,20 +22,38 @@ private:
   WebdisRootContext *root_;
 };
 
-FilterHeadersStatus WebdisContext::onRequestHeaders(uint32_t) {
-  auto context_id = id();
-  auto callback = [context_id](uint32_t, size_t body_size, uint32_t) {
-    logWarn("in callback");
-    getContext(context_id)->setEffectiveContext();
-    auto body = getBufferBytes(BufferType::HttpCallResponseBody, 0, body_size);
-    logWarn(std::string(body->view()));
-  };
-  root()->httpCall("webdis_cluster",
-                   {{":method", "GET"}, {":path", "/INCR/counter"}}, "a",
-                   {{"trailer", "whatever"}}, 1000, callback);
-  return FilterHeadersStatus::Continue;
-}
-
 static RegisterContextFactory
     register_WebdisContext(CONTEXT_FACTORY(WebdisContext),
                            ROOT_FACTORY(WebdisRootContext), "webdis_http_call");
+
+FilterHeadersStatus WebdisContext::onRequestHeaders(uint32_t) {
+  auto context_id = id();
+  auto callback = [context_id](uint32_t, size_t body_size, uint32_t) {
+    auto response_headers =
+        getHeaderMapPairs(HeaderMapType::HttpCallResponseHeaders);
+    // Switch context after getting headers, but before getting body to
+    // exercise both code paths.
+    getContext(context_id)->setEffectiveContext();
+    auto body = getBufferBytes(BufferType::HttpCallResponseBody, 0, body_size);
+    auto response_trailers =
+        getHeaderMapPairs(HeaderMapType::HttpCallResponseTrailers);
+    for (auto &p : response_headers->pairs()) {
+      logInfo(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+    }
+    logDebug(std::string(body->view()));
+    for (auto &p : response_trailers->pairs()) {
+      logInfo(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+    }
+  };
+  logWarn("onRequestHeaders");
+  root()->httpCall("store_upstream",
+                   {{":method", "GET"},
+                    {":path", "/store"},
+                    {":authority", "store_upstream"},
+                    {"key", "123"},
+                    {"value", "456"}},
+                   "", {}, 1000, callback);
+  return FilterHeadersStatus::Continue;
+}
