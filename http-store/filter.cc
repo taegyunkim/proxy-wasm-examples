@@ -4,29 +4,29 @@
 
 #include "proxy_wasm_intrinsics.h"
 
-class WebdisRootContext : public RootContext {
+class HttpStoreRootContext : public RootContext {
 public:
-  explicit WebdisRootContext(uint32_t id, StringView root_id)
+  explicit HttpStoreRootContext(uint32_t id, StringView root_id)
       : RootContext(id, root_id) {}
 };
 
-class WebdisContext : public Context {
+class HttpStoreContext : public Context {
 public:
-  explicit WebdisContext(uint32_t id, RootContext *root)
+  explicit HttpStoreContext(uint32_t id, RootContext *root)
       : Context(id, root),
-        root_(static_cast<WebdisRootContext *>(static_cast<void *>(root))) {}
+        root_(static_cast<HttpStoreRootContext *>(static_cast<void *>(root))) {}
 
   FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
 
 private:
-  WebdisRootContext *root_;
+  HttpStoreRootContext *root_;
 };
 
 static RegisterContextFactory
-    register_WebdisContext(CONTEXT_FACTORY(WebdisContext),
-                           ROOT_FACTORY(WebdisRootContext), "webdis_http_call");
+    register_HttpStoreContext(CONTEXT_FACTORY(HttpStoreContext),
+                              ROOT_FACTORY(HttpStoreRootContext), "http_store");
 
-FilterHeadersStatus WebdisContext::onRequestHeaders(uint32_t) {
+FilterHeadersStatus HttpStoreContext::onRequestHeaders(uint32_t) {
   auto context_id = id();
   auto callback = [context_id](uint32_t, size_t body_size, uint32_t) {
     auto response_headers =

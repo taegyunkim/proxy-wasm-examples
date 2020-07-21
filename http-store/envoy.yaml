@@ -26,13 +26,13 @@ static_resources:
           - name: envoy.filters.http.wasm
             config:
               config:
-                name: "webdis_http_call"
-                root_id: "webdis_http_call"
+                name: "http_store"
+                root_id: "http_store"
                 vm_config:
                   runtime: "envoy.wasm.runtime.v8"
                   code:
                     local:
-                      filename: "/etc/webdis_http_call.wasm"
+                      filename: "/etc/http_store.wasm"
                   allow_precompiled: true
           - name: envoy.router
             config: {}
