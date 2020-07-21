@@ -43,9 +43,20 @@ func retrieve(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func listAll(w http.ResponseWriter, req *http.Request) {
+	log.Println("Received list request.")
+	result := ""
+
+	for k, v := range gldata {
+		result += k + "->" + v + "\n"
+	}
+	w.Write([]byte(result))
+}
+
 func main() {
 	http.HandleFunc("/store", store)
 	http.HandleFunc("/retrieve", retrieve)
+	http.HandleFunc("/list", listAll)
 	log.Println("Starting server...")
 	http.ListenAndServe(":8080", nil)
 }
