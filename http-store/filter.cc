@@ -52,10 +52,10 @@ FilterHeadersStatus HttpStoreContext::onRequestHeaders(uint32_t) {
   auto trace_id = getRequestHeader("x-b3-traceid");
   if (trace_id != nullptr && trace_id->data() != nullptr) {
     uint64_t curr_time = getCurrentTimeNanoseconds();
-    root()->httpCall("store_upstream",
+    root()->httpCall("storage-upstream",
                      {{":method", "GET"},
                       {":path", "/store"},
-                      {":authority", "store_upstream"},
+                      {":authority", "storage-upstream"},
                       {"key", trace_id->toString()},
                       {"value", std::to_string(curr_time)}},
                      "", {}, 1000, callback);

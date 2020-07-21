@@ -29,12 +29,12 @@ services:
     ports:
       - '18080:5678'
 
-  store_upstream:
-    image: simple-store:latest
+  storage-upstream:
+    image: taegyunk91/storage-upstream:latest
     networks:
       envoymesh:
         aliases:
-          - store_upstream
+          - storage-upstream
     expose:
       - '8080'
     ports:
