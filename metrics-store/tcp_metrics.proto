@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+message TcpMetrics {
+  uint64 data_downstream = 1;
+  uint64 data_upstream = 2;
+  google.protobuf.Timestamp time = 3;
+  uint64 latency = 4;
+  uint32 qid = 5;
+}
