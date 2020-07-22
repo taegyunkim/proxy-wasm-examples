@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "proxy_wasm_intrinsics.h"
+#include "tcp_metrics.pb.h"
 
 class MetricsCollectorRootContext : public RootContext {
 public:
@@ -17,6 +18,7 @@ public:
                                static_cast<void *>(root))) {}
 
 private:
+  TcpMetrics metrics_;
   MetricsCollectorRootContext *root_;
 };
 

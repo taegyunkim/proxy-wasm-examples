@@ -24,6 +24,7 @@ wasm_cc_binary(
         "metrics_collector.cc",
     ],
     deps = [
+        ":tcp_metrics_cc_proto",
         "@envoy_wasm_api//:proxy_wasm_intrinsics",
     ],
 )
@@ -34,6 +35,7 @@ wasm_cc_binary(
         "singleton_queue.cc",
     ],
     deps = [
+        ":tcp_metrics_cc_proto",
         "@envoy_wasm_api//:proxy_wasm_intrinsics",
     ],
 )
