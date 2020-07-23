@@ -6,9 +6,6 @@ proto_library(
     srcs = [
         "tcp_metrics.proto",
     ],
-    deps = [
-        "@com_google_protobuf//:timestamp_proto",
-    ],
 )
 
 cc_proto_library(
