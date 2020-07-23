@@ -1,10 +1,8 @@
 // NOLINT(namespace-envoy)
-#include <optional>
 #include <string>
 #include <unordered_map>
 
 #include "proxy_wasm_intrinsics.h"
-#include "tcp_metrics.pb.h"
 
 class MetricsCollectorRootContext : public RootContext {
 public:
@@ -24,24 +22,26 @@ public:
   void onUpstreamConnectionClose(PeerType) override;
 
 private:
-  TcpMetrics metrics_;
+  size_t data_downstream_ = 0;
+  size_t data_upstream_ = 0;
   uint64_t time_;
+  uint64_t latency_ = 0;
 
   MetricsCollectorRootContext *root_;
 };
 
 FilterStatus MetricsCollectorContext::onDownstreamData(size_t data_size, bool) {
-  metrics_.set_data_downstream(metrics_.data_downstream() + data_size);
+  data_downstream_ += data_size;
   return FilterStatus::Continue;
 }
 
 FilterStatus MetricsCollectorContext::onUpstreamData(size_t data_size, bool) {
-  metrics_.set_data_upstream(metrics_.data_upstream() + data_size);
+  data_upstream_ += data_size;
   return FilterStatus::Continue;
 }
 
 void MetricsCollectorContext::onDownstreamConnectionClose(PeerType) {
-  metrics_.set_latency(getCurrentTimeNanoseconds() - time_);
+  latency_ = getCurrentTimeNanoseconds() - time_;
 
   uint32_t token = 0;
   auto result = resolveSharedQueue("singleton", "q1", &token);
@@ -50,7 +50,9 @@ void MetricsCollectorContext::onDownstreamConnectionClose(PeerType) {
     return;
   }
 
-  std::string data = metrics_.SerializeAsString();
+  std::string data = std::to_string(data_downstream_) + " | " +
+                     std::to_string(data_upstream_) + " | " +
+                     std::to_string(latency_);
   result = enqueueSharedQueue(token, data);
   if (result != WasmResult::Ok) {
     logDebug("Failed to enqueue data: " + toString(result));

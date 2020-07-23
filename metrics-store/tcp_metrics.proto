@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-message TcpMetrics {
-  uint64 data_downstream = 1;
-  uint64 data_upstream = 2;
-  uint64 latency = 3;
-}
