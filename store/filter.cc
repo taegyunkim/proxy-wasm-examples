@@ -35,9 +35,9 @@ std::string trafficDirectionToString(TrafficDirection dir) {
   }
 }
 
-class RedisStoreRootContext : public RootContext {
+class PathBasedStoreRootContext : public RootContext {
 public:
-  explicit RedisStoreRootContext(uint32_t id, StringView root_id)
+  explicit PathBasedStoreRootContext(uint32_t id, StringView root_id)
       : RootContext(id, root_id) {
     std::string workload_name;
     if (getValue({"node", "metadata", "WORKLOAD_NAME"}, &workload_name)) {
@@ -63,11 +63,11 @@ private:
   std::vector<std::string> paths;
 };
 
-class RedisStoreContext : public Context {
+class PathBasedStoreContext : public Context {
 public:
-  explicit RedisStoreContext(uint32_t id, RootContext *root)
+  explicit PathBasedStoreContext(uint32_t id, RootContext *root)
       : Context(id, root),
-        root_(static_cast<RedisStoreRootContext *>(static_cast<void *>(root))),
+        root_(static_cast<PathBasedStoreRootContext *>(static_cast<void *>(root))),
         b3_trace_id_(""), b3_span_id_(""), b3_parent_span_id_("") {
     direction_ = getTrafficDirection();
   }
@@ -76,7 +76,7 @@ public:
   FilterHeadersStatus onResponseHeaders(uint32_t headers) override;
 
 private:
-  RedisStoreRootContext *root_;
+  PathBasedStoreRootContext *root_;
   std::string b3_trace_id_;
   std::string b3_span_id_;
   std::string b3_parent_span_id_;
@@ -84,13 +84,13 @@ private:
 };
 
 static RegisterContextFactory
-    register_RedisStoreContext(CONTEXT_FACTORY(RedisStoreContext),
-                               ROOT_FACTORY(RedisStoreRootContext),
+    register_PathBasedStoreContext(CONTEXT_FACTORY(PathBasedStoreContext),
+                               ROOT_FACTORY(PathBasedStoreRootContext),
                                "store_root_id");
 
-bool RedisStoreRootContext::onConfigure(size_t) { return true; }
+bool PathBasedStoreRootContext::onConfigure(size_t) { return true; }
 
-FilterHeadersStatus RedisStoreContext::onRequestHeaders(uint32_t) {
+FilterHeadersStatus PathBasedStoreContext::onRequestHeaders(uint32_t) {
   // auto header_pairs = getRequestHeaderPairs()->pairs();
   // for (const auto &pair : header_pairs) {
   //   LOG_WARN(trafficDirectionToString(direction_) + ": " +
@@ -129,7 +129,7 @@ FilterHeadersStatus RedisStoreContext::onRequestHeaders(uint32_t) {
   return FilterHeadersStatus::Continue;
 }
 
-FilterHeadersStatus RedisStoreContext::onResponseHeaders(uint32_t) {
+FilterHeadersStatus PathBasedStoreContext::onResponseHeaders(uint32_t) {
   // auto header_pairs = getResponseHeaderPairs()->pairs();
   // for (const auto &pair : header_pairs) {
   //   LOG_WARN(trafficDirectionToString(direction_) + ": " +
@@ -195,8 +195,13 @@ FilterHeadersStatus RedisStoreContext::onResponseHeaders(uint32_t) {
                 getBufferBytes(BufferType::HttpCallResponseBody, 0, body_size);
             LOG_WARN(std::string(body->view()));
           };
-          root()->httpCall("redis:7379/INCR/path-based-counter", {}, "", {},
-                           1000, callback);
+          root()->httpCall("storage-upstream",
+                           {{":method", "GET"},
+                            {":path", "/store"},
+                            {":authority", "storage-upstream"},
+                            {"key", b3_trace_id_},
+                            {"value", "1"}},
+                           "", {}, 1000, callback);
         }
       }
 
