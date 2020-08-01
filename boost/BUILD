@@ -19,3 +19,23 @@ cc_binary(
         "@boost//:graph",
     ],
 )
+
+cc_binary(
+    name = "vf2_sub_graph_iso_example",
+    srcs = [
+        "vf2_sub_graph_iso_example.cpp",
+    ],
+    deps = [
+        "@boost//:graph",
+    ],
+)
+
+cc_binary(
+    name = "vf2_sub_graph_iso_multi_example",
+    srcs = [
+        "vf2_sub_graph_iso_multi_example.cpp",
+    ],
+    deps = [
+        "@boost//:graph",
+    ],
+)
