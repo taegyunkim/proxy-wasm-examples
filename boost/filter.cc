@@ -15,11 +15,15 @@ template <typename Graph1, typename Graph2> struct print_callback {
 
   template <typename CorrespondenceMap1To2, typename CorrespondenceMap2To1>
   bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
-    using namespace boost;
-    // Print (sub)graph isomorphism map
-    BGL_FORALL_VERTICES_T(v, graph1_, Graph1)
-    logWarn('(' + get(vertex_index_t(), graph1_, v) + ", " +
-            get(vertex_index_t(), graph2_, get(f, v)) + ") ");
+
+    logWarn("In print callback");
+
+    BGL_FORALL_VERTICES_T(v, graph1_, Graph1) {
+      using namespace boost;
+
+      logWarn('(' + std::to_string(get(vertex_index_t(), graph1_, v)) + ", " +
+              std::to_string(get(vertex_index_t(), graph2_, get(f, v))) + ") ");
+    }
 
     return true;
   }
@@ -65,7 +69,7 @@ public:
     add_edge(3, 6, graph2);
 
     // Create callback to print mappings
-    vf2_print_callback<graph_type, graph_type> callback(graph1, graph2);
+    print_callback<graph_type, graph_type> callback(graph1, graph2);
 
     // Print out all subgraph isomorphism mappings between graph1 and graph2.
     // Vertices and edges are assumed to be always equivalent.
@@ -79,9 +83,55 @@ public:
       : Context(id, root),
         root_(static_cast<HttpAuthRootContext *>(static_cast<void *>(root))) {}
 
+  FilterHeadersStatus onRequestHeaders(uint32_t headers) override;
+
 private:
   HttpAuthRootContext *root_;
 };
 static RegisterContextFactory
     register_HttpAuthContext(CONTEXT_FACTORY(HttpAuthContext),
                              ROOT_FACTORY(HttpAuthRootContext), "http_auth");
+
+FilterHeadersStatus HttpAuthContext::onRequestHeaders(uint32_t) {
+  auto token = getRequestHeader("token");
+  if (token != nullptr && token->data() != nullptr) {
+    logInfo("Auth header : " + token->toString());
+  }
+
+  auto context_id = id();
+  auto callback = [context_id](uint32_t, size_t body_size, uint32_t) {
+    auto response_headers =
+        getHeaderMapPairs(HeaderMapType::HttpCallResponseHeaders);
+    // Switch context after getting headers, but before getting body to
+    // exercise both code paths.
+    getContext(context_id)->setEffectiveContext();
+    auto body = getBufferBytes(BufferType::HttpCallResponseBody, 0, body_size);
+    auto response_trailers =
+        getHeaderMapPairs(HeaderMapType::HttpCallResponseTrailers);
+    for (auto &p : response_headers->pairs()) {
+      logInfo(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+    }
+    logDebug(std::string(body->view()));
+    for (auto &p : response_trailers->pairs()) {
+      logInfo(std::string(p.first) + std::string(" -> ") +
+              std::string(p.second));
+    }
+
+    if (body->toString() == "Authorized") {
+      continueRequest();
+    } else {
+      sendLocalResponse(403, "", "Acceess forbidden\n",
+                        {{"Powered-by", "proxy-wasm"}});
+    }
+  };
+
+  root()->httpCall("wasm_upstream",
+                   {{":method", "GET"},
+                    {":path", "/auth"},
+                    {":authority", "wasm_upstream"},
+                    {"token", token->toString()}},
+                   "", {}, 5000, callback);
+
+  return FilterHeadersStatus::StopIteration;
+}
