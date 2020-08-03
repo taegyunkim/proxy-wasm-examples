@@ -32,20 +32,20 @@ TEST(GraphUtilsTest, DirectedGraph) {
   ASSERT_TRUE(vf2_subgraph_iso(graph1, graph2, callback));
 }
 
-TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
-  struct VertexProperties {
-    std::map<std::string, std::string> properties;
-  };
+struct VertexProperties {
+  std::map<std::string, std::string> properties;
+};
 
+TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
   typedef boost::directed_graph<VertexProperties> graph_type;
 
   graph_type graph1;
 
-  VertexProperties v0_properties;
-  v0_properties.properties.insert({"workload_name", "productpagev1"});
-  auto v0 = graph1.add_vertex(v0_properties);
+  VertexProperties v2_properties;
+  v2_properties.properties.insert({"workload_name", "productpagev1"});
+  auto v0 = graph1.add_vertex();
   auto v1 = graph1.add_vertex();
-  auto v2 = graph1.add_vertex();
+  auto v2 = graph1.add_vertex(v2_properties);
   graph1.add_edge(v2, v0);
   graph1.add_edge(v2, v1);
 
@@ -71,8 +71,10 @@ TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
           .vertices_equivalent(vertex_comp)));
 
   graph_type graph3;
-  v0 = graph3.add_vertex(v0_properties);
-  VertexProperties v1_properties;
+  VertexProperties g3_v0_properties;
+  g3_v0_properties.properties.insert({"workload_name", "productpagev1"});
+
+  v0 = graph3.add_vertex(g3_v0_properties);
   v1 = graph3.add_vertex();
   v2 = graph3.add_vertex();
   v3 = graph3.add_vertex();
@@ -84,8 +86,10 @@ TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
       boost::get(&VertexProperties::properties, graph1),
       boost::get(&VertexProperties::properties, graph3));
 
-  ASSERT_FALSE(boost::vf2_subgraph_iso(
+  ASSERT_TRUE(boost::vf2_subgraph_iso(
       graph1, graph3, callback, boost::vertex_order_by_mult(graph1),
       edges_equivalent(boost::always_equivalent())
           .vertices_equivalent(vertex_comp2)));
 }
+
+TEST(GraphUtilsTest, DirectedGraphPropertySubset) {}
