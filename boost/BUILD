@@ -7,10 +7,10 @@ wasm_cc_binary(
     ],
     deps = [
         "@envoy_wasm_api//:proxy_wasm_intrinsics",
-        "@boost//:callable_traits",
+        # "@boost//:callable_traits",
         # Commenting out following results in following error.
         # https://gist.github.com/taegyunkim/f8e8b8142a7ff4fb36fa0332d5729ffd
-        # "@boost//:graph",
+        "@boost//:graph",
     ],
 )
 
