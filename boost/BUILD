@@ -1,4 +1,5 @@
 load("//bazel/wasm:wasm.bzl", "wasm_cc_binary")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 wasm_cc_binary(
     name = "filter.wasm",
@@ -6,11 +7,33 @@ wasm_cc_binary(
         "filter.cc",
     ],
     deps = [
-        "@envoy_wasm_api//:proxy_wasm_intrinsics",
-        # "@boost//:callable_traits",
-        # Commenting out following results in following error.
-        # https://gist.github.com/taegyunkim/f8e8b8142a7ff4fb36fa0332d5729ffd
         "@boost//:graph",
+        "@envoy_wasm_api//:proxy_wasm_intrinsics",
+    ],
+)
+
+cc_library(
+    name = "graph_utils",
+    srcs = [
+        "graph_utils.cc",
+    ],
+    hdrs = [
+        "graph_utils.h",
+    ],
+    deps = [
+        "@boost//:graph",
+    ],
+)
+
+cc_test(
+    name = "graph_utils_test",
+    srcs = [
+        "graph_utils_test.cc",
+    ],
+    deps = [
+        ":graph_utils",
+        "@gtest",
+        "@gtest//:gtest_main",
     ],
 )
 
