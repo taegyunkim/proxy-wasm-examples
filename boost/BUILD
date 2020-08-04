@@ -7,6 +7,7 @@ wasm_cc_binary(
         "filter.cc",
     ],
     deps = [
+        ":graph_utils",
         "@boost//:graph",
         "@envoy_wasm_api//:proxy_wasm_intrinsics",
     ],

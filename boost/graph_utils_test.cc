@@ -1,4 +1,5 @@
 #include <map>
+#include <string>
 
 #include "graph_utils.h"
 
@@ -121,4 +122,10 @@ TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
       graph1, graph2, callback, boost::vertex_order_by_mult(graph1),
       edges_equivalent(boost::always_equivalent())
           .vertices_equivalent(vertex_comp2)));
+}
+
+TEST(GraphUtilsTest, GenerateTraceGraph) {
+  std::string paths_header = "a-b-c,a-d";
+  EXPECT_THAT(generate_trace_graph_from_paths_header(paths_header),
+              testing::UnorderedElementsAre("a-b-c", "a-d"));
 }

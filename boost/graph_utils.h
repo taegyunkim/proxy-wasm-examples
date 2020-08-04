@@ -1,3 +1,9 @@
+#include <map>
+#include <memory>
+#include <regex>
+#include <string_view>
+
+#include "boost/graph/directed_graph.hpp"
 #include "boost/graph/vf2_sub_graph_iso.hpp"
 
 struct Node {
@@ -6,6 +12,8 @@ struct Node {
   // Map from property names to values.
   std::map<std::string, std::string> properties;
 };
+
+typedef boost::directed_graph<Node> trace_graph_t;
 
 // Binary function object that returns true if the values in item1 (a map)
 // in property_map1 are contained in item2 (a map) in property_map2.
@@ -45,4 +53,19 @@ make_property_map_subset(const PropertyMapFirst property_map1,
 
   return (property_map_subset<PropertyMapFirst, PropertyMapSecond>(
       property_map1, property_map2));
+}
+
+// Generate trace graph from a string representing paths
+// a-b-c,a-d
+// Above means following
+// a has directed edge to b
+// b has directed edge to c
+// a has directed edge to d
+std::vector<std::string>
+generate_trace_graph_from_paths_header(std::string paths_header) {
+  std::regex delimiter(",");
+  std::sregex_token_iterator it{paths_header.begin(), paths_header.end(),
+                                delimiter, -1};
+  std::vector<std::string> paths{it, {}};
+  return paths;
 }
