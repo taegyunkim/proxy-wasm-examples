@@ -90,11 +90,26 @@ generate_trace_graph_from_paths_header(std::string paths_header,
     }
   }
 
+  std::map<std::string, std::map<std::vector<std::string>, std::string>>
+      ids_to_properties;
+  std::vector<std::string> properties = str_split(properties_header, ",");
+  for (const auto &property : properties) {
+    // Given a.x.y.z == 123, the vector will have a, x, y, z, 123
+    std::vector<std::string> property_split = str_split(property, "[.]|(==)");
+    const auto &node_id = property_split.front();
+    const auto &value = property_split.back();
+
+    ids_to_properties[node_id].insert(
+        {std::vector<std::string>{property_split.begin() + 1,
+                                  property_split.end() - 1},
+         value});
+  }
+
   std::map<std::string, void *> ids_to_vertex_descriptors;
 
   trace_graph_t graph;
   for (const auto &vertex : vertices) {
-    auto v = graph.add_vertex();
+    auto v = graph.add_vertex(Node{vertex, ids_to_properties[vertex]});
     ids_to_vertex_descriptors.insert({vertex, v});
   }
 
@@ -107,8 +122,6 @@ generate_trace_graph_from_paths_header(std::string paths_header,
 
     graph.add_edge(src_vertex, dst_vertex);
   }
-
-  std::cout << graph.num_edges() << std::endl;
 
   return graph;
 }

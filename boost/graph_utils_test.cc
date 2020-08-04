@@ -131,11 +131,21 @@ TEST(StrSplitTest, Simple) {
               testing::ElementsAre("a", "b", "c", "d", "e"));
 }
 
+TEST(StrSplitTest, RegexOr) {
+  EXPECT_THAT(str_split("a.x.y.z==123", "[.]|(==)"),
+              testing::ElementsAre("a", "x", "y", "z", "123"));
+}
+
+TEST(StrSplitTest, Empty) {
+  EXPECT_THAT(str_split("", ","), testing::ElementsAre(""));
+}
+
 TEST(GenerateTraceGraphTestFromPathsHeader, ReturnsGraph) {
   std::string paths_header = "a-b-c,a-d";
+  std::string properties_header = "a.x.y.z==123";
 
   trace_graph_t graph =
-      generate_trace_graph_from_paths_header(paths_header, "");
+      generate_trace_graph_from_paths_header(paths_header, properties_header);
   EXPECT_EQ(graph.num_vertices(), 4);
   EXPECT_EQ(graph.num_edges(), 3);
 
@@ -152,5 +162,22 @@ TEST(GenerateTraceGraphTestFromPathsHeader, ReturnsGraph) {
   boost::vf2_print_callback<trace_graph_t, trace_graph_t> callback(
       graph, expected_graph);
 
-  EXPECT_TRUE(boost::vf2_subgraph_iso(graph, expected_graph, callback));
+  auto vertex_comp =
+      make_property_map_subset(boost::get(&Node::properties, graph),
+                               boost::get(&Node::properties, expected_graph));
+
+  EXPECT_FALSE(boost::vf2_subgraph_iso(
+      graph, expected_graph, callback, boost::vertex_order_by_mult(graph),
+      edges_equivalent(boost::always_equivalent())
+          .vertices_equivalent(vertex_comp)));
+
+  // Add expected property
+  boost::put(&Node::properties, expected_graph, v0,
+             std::map<std::vector<std::string>, std::string>{
+                 {{"x", "y", "z"}, "123"}});
+
+  EXPECT_TRUE(boost::vf2_subgraph_iso(
+      graph, expected_graph, callback, boost::vertex_order_by_mult(graph),
+      edges_equivalent(boost::always_equivalent())
+          .vertices_equivalent(vertex_comp)));
 }
