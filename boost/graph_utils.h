@@ -55,17 +55,20 @@ make_property_map_subset(const PropertyMapFirst property_map1,
       property_map1, property_map2));
 }
 
+std::vector<std::string> str_split(const std::string &str,
+                                   const std::string &delim) {
+  std::regex re(delim);
+  std::sregex_token_iterator it{str.begin(), str.end(), re, -1};
+  return {it, {}};
+}
+
 // Generate trace graph from a string representing paths
 // a-b-c,a-d
 // Above means following
 // a has directed edge to b
 // b has directed edge to c
 // a has directed edge to d
-std::vector<std::string>
+std::unique_ptr<trace_graph_t>
 generate_trace_graph_from_paths_header(std::string paths_header) {
-  std::regex delimiter(",");
-  std::sregex_token_iterator it{paths_header.begin(), paths_header.end(),
-                                delimiter, -1};
-  std::vector<std::string> paths{it, {}};
-  return paths;
+  return std::make_unique<trace_graph_t>();
 }

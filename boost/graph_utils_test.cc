@@ -124,8 +124,9 @@ TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
           .vertices_equivalent(vertex_comp2)));
 }
 
-TEST(GraphUtilsTest, GenerateTraceGraph) {
-  std::string paths_header = "a-b-c,a-d";
-  EXPECT_THAT(generate_trace_graph_from_paths_header(paths_header),
-              testing::UnorderedElementsAre("a-b-c", "a-d"));
+TEST(StrSplitTest, Simple) {
+  EXPECT_THAT(str_split("a-b-c,a-d,d-e", ","),
+              testing::ElementsAre("a-b-c", "a-d", "d-e"));
+  EXPECT_THAT(str_split("a-b-c-d-e", "-"),
+              testing::ElementsAre("a", "b", "c", "d", "e"));
 }
