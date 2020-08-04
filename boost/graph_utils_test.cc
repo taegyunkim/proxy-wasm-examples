@@ -32,50 +32,6 @@ TEST(GraphUtilsTest, DirectedGraph) {
   ASSERT_TRUE(vf2_subgraph_iso(graph1, graph2, callback));
 }
 
-struct VertexProperties {
-  std::map<std::string, std::string> properties;
-};
-
-// Binary function object that returns true if the values for item1
-// in property_map1 and item2 in property_map2 are equivalent.
-template <typename PropertyMapFirst, typename PropertyMapSecond>
-struct property_map_subset {
-
-  property_map_subset(const PropertyMapFirst property_map1,
-                      const PropertyMapSecond property_map2)
-      : m_property_map1(property_map1), m_property_map2(property_map2) {}
-
-  template <typename ItemFirst, typename ItemSecond>
-  bool operator()(const ItemFirst item1, const ItemSecond item2) {
-    const auto &map1 = get(m_property_map1, item1);
-    const auto &map2 = get(m_property_map2, item2);
-
-    for (const auto &pair : map1) {
-      if (map2.find(pair.first) == map2.end() ||
-          map2.at(pair.first) != pair.second) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-private:
-  const PropertyMapFirst m_property_map1;
-  const PropertyMapSecond m_property_map2;
-};
-
-// Returns a property_map_equivalent object that compares the values
-// of property_map1 and property_map2.
-template <typename PropertyMapFirst, typename PropertyMapSecond>
-property_map_subset<PropertyMapFirst, PropertyMapSecond>
-make_property_map_subset(const PropertyMapFirst property_map1,
-                         const PropertyMapSecond property_map2) {
-
-  return (property_map_subset<PropertyMapFirst, PropertyMapSecond>(
-      property_map1, property_map2));
-}
-
 TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
   typedef boost::directed_graph<VertexProperties> graph_type;
 
@@ -138,13 +94,13 @@ TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
   graph_type graph1;
   VertexProperties v0_properties;
   v0_properties.properties.insert({"workload_name", "productpagev1"});
-  auto v0 = graph1.add_vertex(v0_properties);
+  graph1.add_vertex(v0_properties);
 
   graph_type graph2;
   VertexProperties v1_properties;
   v1_properties.properties.insert({"workload_name", "productpagev1"});
   v1_properties.properties.insert({"id", "abc"});
-  auto v1 = graph2.add_vertex(v1_properties);
+  graph2.add_vertex(v1_properties);
 
   auto vertex_comp = boost::make_property_map_equivalent(
       boost::get(&VertexProperties::properties, graph1),
