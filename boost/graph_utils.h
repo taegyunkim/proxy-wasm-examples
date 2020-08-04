@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <regex>
@@ -57,10 +58,19 @@ make_property_map_subset(const PropertyMapFirst property_map1,
 }
 
 std::vector<std::string> str_split(const std::string &str,
-                                   const std::string &delim) {
+                                   const std::string &delim,
+                                   bool filter_empty = false) {
   std::regex re(delim);
   std::sregex_token_iterator it{str.begin(), str.end(), re, -1};
-  return {it, {}};
+
+  std::vector<std::string> result{it, {}};
+  if (filter_empty) {
+    result.erase(std::remove_if(result.begin(), result.end(),
+                                [](std::string s) { return s.empty(); }),
+                 result.end());
+  }
+
+  return result;
 }
 
 trace_graph_t generate_trace_graph(
@@ -78,7 +88,12 @@ trace_graph_t generate_trace_graph(
   std::map<std::string, void *> ids_to_vertex_descriptors;
 
   for (const auto &vertex : vertices) {
-    auto v = graph.add_vertex(Node{vertex, ids_to_properties[vertex]});
+    trace_graph_t::vertex_descriptor v;
+    if (ids_to_properties.find(vertex) != ids_to_properties.end()) {
+      v = graph.add_vertex(Node{vertex, ids_to_properties[vertex]});
+    } else {
+      v = graph.add_vertex();
+    }
     ids_to_vertex_descriptors.insert({vertex, v});
   }
 

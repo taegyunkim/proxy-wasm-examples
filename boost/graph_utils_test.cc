@@ -134,10 +134,15 @@ TEST(StrSplitTest, Simple) {
 TEST(StrSplitTest, RegexOr) {
   EXPECT_THAT(str_split("a.x.y.z==123", "[.]|(==)"),
               testing::ElementsAre("a", "x", "y", "z", "123"));
+
+  EXPECT_THAT(
+      str_split("a.x.y.z == 123", R"([.]|(==)|(\s+))", /*filter_empty=*/true),
+      testing::ElementsAre("a", "x", "y", "z", "123"));
 }
 
 TEST(StrSplitTest, Empty) {
   EXPECT_THAT(str_split("", ","), testing::ElementsAre(""));
+  EXPECT_THAT(str_split("", ",", /*filter_empty=*/true), testing::IsEmpty());
 }
 
 TEST(GenerateTraceGraphTestFromHeaders, ReturnsGraph) {
@@ -180,4 +185,10 @@ TEST(GenerateTraceGraphTestFromHeaders, ReturnsGraph) {
       graph, expected_graph, callback, boost::vertex_order_by_mult(graph),
       edges_equivalent(boost::always_equivalent())
           .vertices_equivalent(vertex_comp)));
+}
+
+TEST(GenerateTraceGraphTest, EmptyInputs) {
+  trace_graph_t graph = generate_trace_graph({}, {});
+  EXPECT_EQ(graph.num_vertices(), 0);
+  EXPECT_EQ(graph.num_edges(), 0);
 }
