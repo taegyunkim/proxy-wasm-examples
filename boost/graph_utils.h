@@ -70,5 +70,21 @@ std::vector<std::string> str_split(const std::string &str,
 // a has directed edge to d
 std::unique_ptr<trace_graph_t>
 generate_trace_graph_from_paths_header(std::string paths_header) {
+  // a-b-c,a-d
+  // Split strings into vector of paths
+  // [a-b-c, a-d]
+  // Iterate over the paths to
+  //  1. Collect set of vertices
+  //    set(a, b,c, d)
+  //  2. Edge relationships
+  //    std::vector<std::pair<std::string, std::string>> { (a, b), (b, c), (a,
+  //    d)}
+  // Generate a map from ids to vertex_descriptors, by creating Nodes
+  // std::map<std::string, vertex_descriptors> node_map;
+  // for (const auto& id: set(a, b, c, d)) {
+  //    std::map.insert({id, graph.add_vertex(Node {id: id, properties})})
+  // }
+  //
+  // Iterate over edge relationships, and add edges
   return std::make_unique<trace_graph_t>();
 }
