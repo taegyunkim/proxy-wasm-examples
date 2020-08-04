@@ -130,3 +130,26 @@ TEST(StrSplitTest, Simple) {
   EXPECT_THAT(str_split("a-b-c-d-e", "-"),
               testing::ElementsAre("a", "b", "c", "d", "e"));
 }
+
+TEST(GenerateTraceGraphTestFromPathsHeader, ReturnsGraph) {
+  std::string paths_header = "a-b-c,a-d";
+
+  trace_graph_t graph = generate_trace_graph_from_paths_header(paths_header);
+  EXPECT_EQ(graph.num_vertices(), 4);
+  EXPECT_EQ(graph.num_edges(), 3);
+
+  trace_graph_t expected_graph;
+  auto v0 = expected_graph.add_vertex();
+  auto v1 = expected_graph.add_vertex();
+  auto v2 = expected_graph.add_vertex();
+  auto v3 = expected_graph.add_vertex();
+
+  expected_graph.add_edge(v0, v1);
+  expected_graph.add_edge(v1, v2);
+  expected_graph.add_edge(v0, v3);
+
+  boost::vf2_print_callback<trace_graph_t, trace_graph_t> callback(
+      graph, expected_graph);
+
+  EXPECT_TRUE(boost::vf2_subgraph_iso(graph, expected_graph, callback));
+}

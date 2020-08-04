@@ -1,6 +1,7 @@
 #include <map>
 #include <memory>
 #include <regex>
+#include <set>
 #include <string_view>
 
 #include "boost/graph/directed_graph.hpp"
@@ -68,23 +69,40 @@ std::vector<std::string> str_split(const std::string &str,
 // a has directed edge to b
 // b has directed edge to c
 // a has directed edge to d
-std::unique_ptr<trace_graph_t>
-generate_trace_graph_from_paths_header(std::string paths_header) {
-  // a-b-c,a-d
-  // Split strings into vector of paths
-  // [a-b-c, a-d]
-  // Iterate over the paths to
-  //  1. Collect set of vertices
-  //    set(a, b,c, d)
-  //  2. Edge relationships
-  //    std::vector<std::pair<std::string, std::string>> { (a, b), (b, c), (a,
-  //    d)}
-  // Generate a map from ids to vertex_descriptors, by creating Nodes
-  // std::map<std::string, vertex_descriptors> node_map;
-  // for (const auto& id: set(a, b, c, d)) {
-  //    std::map.insert({id, graph.add_vertex(Node {id: id, properties})})
-  // }
-  //
-  // Iterate over edge relationships, and add edges
-  return std::make_unique<trace_graph_t>();
+trace_graph_t generate_trace_graph_from_paths_header(std::string paths_header) {
+  std::vector<std::string> paths = str_split(paths_header, ",");
+
+  std::set<std::string> vertices;
+  std::vector<std::pair<std::string, std::string>> edges;
+  for (const std::string &path : paths) {
+    std::vector<std::string> vertices_vec = str_split(path, "-");
+    for (int i = 0; i < vertices_vec.size(); ++i) {
+      vertices.insert(vertices_vec[i]);
+      if (i + 1 < vertices_vec.size()) {
+        edges.push_back(std::make_pair(vertices_vec[i], vertices_vec[i + 1]));
+      }
+    }
+  }
+
+  std::map<std::string, void *> ids_to_vertex_descriptors;
+
+  trace_graph_t graph;
+  for (const auto &vertex : vertices) {
+    auto v = graph.add_vertex();
+    ids_to_vertex_descriptors.insert({vertex, v});
+  }
+
+  for (const auto &edge : edges) {
+    const auto &src_id = edge.first;
+    auto *src_vertex = ids_to_vertex_descriptors[src_id];
+
+    const auto &dst_id = edge.second;
+    auto *dst_vertex = ids_to_vertex_descriptors[dst_id];
+
+    graph.add_edge(src_vertex, dst_vertex);
+  }
+
+  std::cout << graph.num_edges() << std::endl;
+
+  return graph;
 }
