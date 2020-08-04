@@ -11,7 +11,7 @@ struct Node {
   // ID of the node, either specified by user query, or service_name from trace.
   std::string id;
   // Map from property names to values.
-  std::map<std::string, std::string> properties;
+  std::map<std::vector<std::string>, std::string> properties;
 };
 
 typedef boost::directed_graph<Node> trace_graph_t;
@@ -63,13 +63,19 @@ std::vector<std::string> str_split(const std::string &str,
   return {it, {}};
 }
 
-// Generate trace graph from a string representing paths
+// Generate trace graph from a string representing paths and properties
+// paths header
 // a-b-c,a-d
 // Above means following
 // a has directed edge to b
 // b has directed edge to c
 // a has directed edge to d
-trace_graph_t generate_trace_graph_from_paths_header(std::string paths_header) {
+//
+// properties header
+// a.x.y.z==123,b.y.z==456
+trace_graph_t
+generate_trace_graph_from_paths_header(std::string paths_header,
+                                       std::string properties_header) {
   std::vector<std::string> paths = str_split(paths_header, ",");
 
   std::set<std::string> vertices;

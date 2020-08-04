@@ -39,7 +39,7 @@ TEST(GraphUtilsTest, DirectedGraphWithProperties) {
   graph_type graph1;
 
   Node node2;
-  node2.properties.insert({"workload_name", "productpagev1"});
+  node2.properties.insert({{"workload_name"}, "productpagev1"});
   auto v0 = graph1.add_vertex();
   auto v1 = graph1.add_vertex();
   auto v2 = graph1.add_vertex(node2);
@@ -69,7 +69,7 @@ TEST(GraphUtilsTest, DirectedGraphWithProperties) {
 
   graph_type graph3;
   Node node0;
-  node0.properties.insert({"workload_name", "productpagev1"});
+  node0.properties.insert({{"workload_name"}, "productpagev1"});
 
   v0 = graph3.add_vertex(node0);
   v1 = graph3.add_vertex();
@@ -94,13 +94,13 @@ TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
 
   graph_type graph1;
   Node node0;
-  node0.properties.insert({"workload_name", "productpagev1"});
+  node0.properties.insert({{"workload_name"}, "productpagev1"});
   graph1.add_vertex(node0);
 
   graph_type graph2;
   Node node1;
-  node1.properties.insert({"workload_name", "productpagev1"});
-  node1.properties.insert({"xyz", "abc"});
+  node1.properties.insert({{"workload_name"}, "productpagev1"});
+  node1.properties.insert({{"x", "y", "z"}, "abc"});
   graph2.add_vertex(node1);
 
   auto vertex_comp = boost::make_property_map_equivalent(
@@ -134,7 +134,8 @@ TEST(StrSplitTest, Simple) {
 TEST(GenerateTraceGraphTestFromPathsHeader, ReturnsGraph) {
   std::string paths_header = "a-b-c,a-d";
 
-  trace_graph_t graph = generate_trace_graph_from_paths_header(paths_header);
+  trace_graph_t graph =
+      generate_trace_graph_from_paths_header(paths_header, "");
   EXPECT_EQ(graph.num_vertices(), 4);
   EXPECT_EQ(graph.num_edges(), 3);
 
