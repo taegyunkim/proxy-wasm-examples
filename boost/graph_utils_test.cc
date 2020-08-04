@@ -140,12 +140,12 @@ TEST(StrSplitTest, Empty) {
   EXPECT_THAT(str_split("", ","), testing::ElementsAre(""));
 }
 
-TEST(GenerateTraceGraphTestFromPathsHeader, ReturnsGraph) {
+TEST(GenerateTraceGraphTestFromHeaders, ReturnsGraph) {
   std::string paths_header = "a-b-c,a-d";
   std::string properties_header = "a.x.y.z==123";
 
   trace_graph_t graph =
-      generate_trace_graph_from_paths_header(paths_header, properties_header);
+      generate_trace_graph_from_headers(paths_header, properties_header);
   EXPECT_EQ(graph.num_vertices(), 4);
   EXPECT_EQ(graph.num_edges(), 3);
 
