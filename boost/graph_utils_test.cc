@@ -32,16 +32,16 @@ TEST(GraphUtilsTest, DirectedGraph) {
   ASSERT_TRUE(vf2_subgraph_iso(graph1, graph2, callback));
 }
 
-TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
-  typedef boost::directed_graph<VertexProperties> graph_type;
+TEST(GraphUtilsTest, DirectedGraphWithProperties) {
+  typedef boost::directed_graph<Node> graph_type;
 
   graph_type graph1;
 
-  VertexProperties v2_properties;
-  v2_properties.properties.insert({"workload_name", "productpagev1"});
+  Node node2;
+  node2.properties.insert({"workload_name", "productpagev1"});
   auto v0 = graph1.add_vertex();
   auto v1 = graph1.add_vertex();
-  auto v2 = graph1.add_vertex(v2_properties);
+  auto v2 = graph1.add_vertex(node2);
   graph1.add_edge(v2, v0);
   graph1.add_edge(v2, v1);
 
@@ -57,8 +57,8 @@ TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
   boost::vf2_print_callback<graph_type, graph_type> callback(graph1, graph2);
 
   auto vertex_comp = boost::make_property_map_equivalent(
-      boost::get(&VertexProperties::properties, graph1),
-      boost::get(&VertexProperties::properties, graph2));
+      boost::get(&Node::properties, graph1),
+      boost::get(&Node::properties, graph2));
 
   // When called without vertex_property_map
   ASSERT_FALSE(boost::vf2_subgraph_iso(
@@ -67,10 +67,10 @@ TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
           .vertices_equivalent(vertex_comp)));
 
   graph_type graph3;
-  VertexProperties g3_v0_properties;
-  g3_v0_properties.properties.insert({"workload_name", "productpagev1"});
+  Node node0;
+  node0.properties.insert({"workload_name", "productpagev1"});
 
-  v0 = graph3.add_vertex(g3_v0_properties);
+  v0 = graph3.add_vertex(node0);
   v1 = graph3.add_vertex();
   v2 = graph3.add_vertex();
   v3 = graph3.add_vertex();
@@ -79,8 +79,8 @@ TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
   graph3.add_edge(v0, v3);
 
   auto vertex_comp2 = boost::make_property_map_equivalent(
-      boost::get(&VertexProperties::properties, graph1),
-      boost::get(&VertexProperties::properties, graph3));
+      boost::get(&Node::properties, graph1),
+      boost::get(&Node::properties, graph3));
 
   ASSERT_TRUE(boost::vf2_subgraph_iso(
       graph1, graph3, callback, boost::vertex_order_by_mult(graph1),
@@ -89,22 +89,22 @@ TEST(GraphUtilsTest, DirectedGraphWithVertexProperties) {
 }
 
 TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
-  typedef boost::directed_graph<VertexProperties> graph_type;
+  typedef boost::directed_graph<Node> graph_type;
 
   graph_type graph1;
-  VertexProperties v0_properties;
-  v0_properties.properties.insert({"workload_name", "productpagev1"});
-  graph1.add_vertex(v0_properties);
+  Node node0;
+  node0.properties.insert({"workload_name", "productpagev1"});
+  graph1.add_vertex(node0);
 
   graph_type graph2;
-  VertexProperties v1_properties;
-  v1_properties.properties.insert({"workload_name", "productpagev1"});
-  v1_properties.properties.insert({"id", "abc"});
-  graph2.add_vertex(v1_properties);
+  Node node1;
+  node1.properties.insert({"workload_name", "productpagev1"});
+  node1.properties.insert({"xyz", "abc"});
+  graph2.add_vertex(node1);
 
   auto vertex_comp = boost::make_property_map_equivalent(
-      boost::get(&VertexProperties::properties, graph1),
-      boost::get(&VertexProperties::properties, graph2));
+      boost::get(&Node::properties, graph1),
+      boost::get(&Node::properties, graph2));
 
   boost::vf2_print_callback<graph_type, graph_type> callback(graph1, graph2);
 
@@ -113,9 +113,9 @@ TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
       edges_equivalent(boost::always_equivalent())
           .vertices_equivalent(vertex_comp)));
 
-  auto vertex_comp2 = make_property_map_subset(
-      boost::get(&VertexProperties::properties, graph1),
-      boost::get(&VertexProperties::properties, graph2));
+  auto vertex_comp2 =
+      make_property_map_subset(boost::get(&Node::properties, graph1),
+                               boost::get(&Node::properties, graph2));
 
   ASSERT_TRUE(boost::vf2_subgraph_iso(
       graph1, graph2, callback, boost::vertex_order_by_mult(graph1),

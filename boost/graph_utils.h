@@ -1,22 +1,14 @@
 #include "boost/graph/vf2_sub_graph_iso.hpp"
 
-// Default print_callback
-template <typename Graph1, typename Graph2> struct vf2_no_op_callback {
-
-  vf2_no_op_callback(const Graph1 &graph1, const Graph2 &graph2) {}
-
-  template <typename CorrespondenceMap1To2, typename CorrespondenceMap2To1>
-  bool operator()(CorrespondenceMap1To2 f, CorrespondenceMap2To1) const {
-    return true;
-  }
-};
-
-struct VertexProperties {
+struct Node {
+  // ID of the node, either specified by user query, or service_name from trace.
+  std::string id;
+  // Map from property names to values.
   std::map<std::string, std::string> properties;
 };
 
-// Binary function object that returns true if the values for item1
-// in property_map1 and item2 in property_map2 are equivalent.
+// Binary function object that returns true if the values in item1 (a map)
+// in property_map1 are contained in item2 (a map) in property_map2.
 template <typename PropertyMapFirst, typename PropertyMapSecond>
 struct property_map_subset {
 
@@ -44,7 +36,7 @@ private:
   const PropertyMapSecond m_property_map2;
 };
 
-// Returns a property_map_equivalent object that compares the values
+// Returns a property_map_subset object that compares the values
 // of property_map1 and property_map2.
 template <typename PropertyMapFirst, typename PropertyMapSecond>
 property_map_subset<PropertyMapFirst, PropertyMapSecond>
