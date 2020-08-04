@@ -122,7 +122,7 @@ trace_graph_t generate_trace_graph(
 // a.x.y.z==123,b.y.z==456
 trace_graph_t generate_trace_graph_from_headers(std::string paths_header,
                                                 std::string properties_header) {
-  std::vector<std::string> paths = str_split(paths_header, ",");
+  std::vector<std::string> paths = str_split(paths_header, ",", true);
 
   std::vector<std::pair<std::string, std::string>> edges;
   for (const std::string &path : paths) {
@@ -136,10 +136,11 @@ trace_graph_t generate_trace_graph_from_headers(std::string paths_header,
 
   std::map<std::string, std::map<std::vector<std::string>, std::string>>
       ids_to_properties;
-  std::vector<std::string> properties = str_split(properties_header, ",");
+  std::vector<std::string> properties = str_split(properties_header, ",", true);
   for (const auto &property : properties) {
     // Given a.x.y.z == 123, the vector will have a, x, y, z, 123
-    std::vector<std::string> property_split = str_split(property, "[.]|(==)");
+    std::vector<std::string> property_split =
+        str_split(property, R"([.]|(==)|(\s+))", /*filter_empty=*/true);
     const auto &node_id = property_split.front();
     const auto &value = property_split.back();
 

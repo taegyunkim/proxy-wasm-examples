@@ -145,7 +145,7 @@ TEST(StrSplitTest, Empty) {
   EXPECT_THAT(str_split("", ",", /*filter_empty=*/true), testing::IsEmpty());
 }
 
-TEST(GenerateTraceGraphTestFromHeaders, ReturnsGraph) {
+TEST(GenerateTraceGraphFromHeadersTest, ReturnsGraph) {
   std::string paths_header = "a-b-c,a-d";
   std::string properties_header = "a.x.y.z==123";
 
@@ -185,6 +185,13 @@ TEST(GenerateTraceGraphTestFromHeaders, ReturnsGraph) {
       graph, expected_graph, callback, boost::vertex_order_by_mult(graph),
       edges_equivalent(boost::always_equivalent())
           .vertices_equivalent(vertex_comp)));
+}
+
+TEST(GenerateTraceGraphFromHeadersTest, EmptyInputs) {
+  trace_graph_t graph =
+      generate_trace_graph_from_headers("", "");
+  EXPECT_EQ(graph.num_vertices(), 0);
+  EXPECT_EQ(graph.num_edges(), 0);
 }
 
 TEST(GenerateTraceGraphTest, EmptyInputs) {
