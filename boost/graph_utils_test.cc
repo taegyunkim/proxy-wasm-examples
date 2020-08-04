@@ -1,13 +1,13 @@
 #include <map>
 #include <string>
 
-#include "graph_utils.h"
-
 #include "boost/graph/adjacency_list.hpp"
 #include "boost/graph/directed_graph.hpp"
 #include "boost/graph/vf2_sub_graph_iso.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include "graph_utils.h"
 
 TEST(GraphUtilsTest, DirectedGraph) {
   typedef boost::directed_graph<> graph_type;
@@ -124,27 +124,6 @@ TEST(GraphUtilsTest, DirectedGraphPropertySubset) {
           .vertices_equivalent(vertex_comp2)));
 }
 
-TEST(StrSplitTest, Simple) {
-  EXPECT_THAT(str_split("a-b-c,a-d,d-e", ","),
-              testing::ElementsAre("a-b-c", "a-d", "d-e"));
-  EXPECT_THAT(str_split("a-b-c-d-e", "-"),
-              testing::ElementsAre("a", "b", "c", "d", "e"));
-}
-
-TEST(StrSplitTest, RegexOr) {
-  EXPECT_THAT(str_split("a.x.y.z==123", "[.]|(==)"),
-              testing::ElementsAre("a", "x", "y", "z", "123"));
-
-  EXPECT_THAT(
-      str_split("a.x.y.z == 123", R"([.]|(==)|(\s+))", /*filter_empty=*/true),
-      testing::ElementsAre("a", "x", "y", "z", "123"));
-}
-
-TEST(StrSplitTest, Empty) {
-  EXPECT_THAT(str_split("", ","), testing::ElementsAre(""));
-  EXPECT_THAT(str_split("", ",", /*filter_empty=*/true), testing::IsEmpty());
-}
-
 TEST(GenerateTraceGraphFromHeadersTest, ReturnsGraph) {
   std::string paths_header = "a-b-c,a-d";
   std::string properties_header = "a.x.y.z==123";
@@ -188,8 +167,7 @@ TEST(GenerateTraceGraphFromHeadersTest, ReturnsGraph) {
 }
 
 TEST(GenerateTraceGraphFromHeadersTest, EmptyInputs) {
-  trace_graph_t graph =
-      generate_trace_graph_from_headers("", "");
+  trace_graph_t graph = generate_trace_graph_from_headers("", "");
   EXPECT_EQ(graph.num_vertices(), 0);
   EXPECT_EQ(graph.num_edges(), 0);
 }

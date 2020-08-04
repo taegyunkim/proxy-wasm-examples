@@ -14,6 +14,28 @@ wasm_cc_binary(
 )
 
 cc_library(
+    name = "str_utils",
+    srcs = [
+        "str_utils.cc",
+    ],
+    hdrs = [
+        "str_utils.h",
+    ],
+)
+
+cc_test(
+    name = "str_utils_test",
+    srcs = [
+        "str_utils_test.cc",
+    ],
+    deps = [
+        ":str_utils",
+        "@gtest",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_library(
     name = "graph_utils",
     srcs = [
         "graph_utils.cc",
@@ -22,6 +44,7 @@ cc_library(
         "graph_utils.h",
     ],
     deps = [
+        ":str_utils",
         "@boost//:graph",
     ],
 )

@@ -8,6 +8,8 @@
 #include "boost/graph/directed_graph.hpp"
 #include "boost/graph/vf2_sub_graph_iso.hpp"
 
+#include "str_utils.h"
+
 struct Node {
   // ID of the node, either specified by user query, or service_name from trace.
   std::string id;
@@ -55,22 +57,6 @@ make_property_map_subset(const PropertyMapFirst property_map1,
 
   return (property_map_subset<PropertyMapFirst, PropertyMapSecond>(
       property_map1, property_map2));
-}
-
-std::vector<std::string> str_split(const std::string &str,
-                                   const std::string &delim,
-                                   bool filter_empty = false) {
-  std::regex re(delim);
-  std::sregex_token_iterator it{str.begin(), str.end(), re, -1};
-
-  std::vector<std::string> result{it, {}};
-  if (filter_empty) {
-    result.erase(std::remove_if(result.begin(), result.end(),
-                                [](std::string s) { return s.empty(); }),
-                 result.end());
-  }
-
-  return result;
 }
 
 trace_graph_t generate_trace_graph(
