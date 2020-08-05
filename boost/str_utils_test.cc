@@ -1,3 +1,5 @@
+#include <string_view>
+#include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -23,4 +25,10 @@ TEST(StrSplitTest, RegexOr) {
 TEST(StrSplitTest, Empty) {
   EXPECT_THAT(str_split("", ","), testing::ElementsAre(""));
   EXPECT_THAT(str_split("", ",", /*filter_empty=*/true), testing::IsEmpty());
+}
+
+TEST(StrJoinTest, Inputs) {
+  EXPECT_EQ(str_join({"1", "2", "3"}, ","), "1,2,3");
+  EXPECT_EQ(str_join(std::vector<std::string_view>{"1", "2", "3"}, ","),
+            "1,2,3");
 }
