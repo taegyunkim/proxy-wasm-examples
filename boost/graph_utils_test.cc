@@ -173,7 +173,59 @@ TEST(GenerateTraceGraphFromHeadersTest, EmptyInputs) {
 }
 
 TEST(GenerateTraceGraphTest, EmptyInputs) {
-  trace_graph_t graph = generate_trace_graph({}, {});
+  trace_graph_t graph = generate_trace_graph({}, {}, {});
   EXPECT_EQ(graph.num_vertices(), 0);
   EXPECT_EQ(graph.num_edges(), 0);
+}
+
+TEST(GenerateTraceGraphFromHeadersTest, SingleNode) {
+  trace_graph_t graph = generate_trace_graph_from_headers("a", "");
+  EXPECT_EQ(graph.num_vertices(), 1);
+  EXPECT_EQ(graph.num_edges(), 0);
+}
+
+TEST(GetSubGraphMappingTest, Simple) {
+  trace_graph_t graph_small = generate_trace_graph_from_headers("a", "");
+  trace_graph_t graph_large = generate_trace_graph_from_headers("b", "");
+
+  auto mapping = get_sub_graph_mapping(graph_small, graph_large);
+
+  EXPECT_EQ(mapping.size(), 1);
+  EXPECT_THAT(mapping, testing::Contains(testing::Pair("a", "b")));
+}
+
+TEST(GetSubGraphMappintTest, NoMapping) {
+  trace_graph_t graph_small = generate_trace_graph_from_headers("a", "a.x==y");
+  trace_graph_t graph_large = generate_trace_graph_from_headers("b", "b.x==z");
+
+  auto mapping = get_sub_graph_mapping(graph_small, graph_large);
+
+  ASSERT_EQ(mapping.size(), 0);
+}
+
+TEST(GetSubGraphMappingTest, MultipleMapping) {
+  // a could be mapped to either b or c.
+  trace_graph_t graph_small = generate_trace_graph_from_headers("a", "");
+  trace_graph_t graph_large = generate_trace_graph_from_headers("b-c", "");
+
+  auto mapping = get_sub_graph_mapping(graph_small, graph_large);
+
+  EXPECT_EQ(mapping.size(), 1);
+  EXPECT_TRUE(mapping.at("a") == "b" || mapping.at("a") == "c");
+}
+
+TEST(GetSubGraphMappingTest, GetMappingAndProperty) {
+  // a could be mapped to either b or c.
+  trace_graph_t graph_small = generate_trace_graph_from_headers("a", "a.x==y");
+  trace_graph_t graph_large =
+      generate_trace_graph_from_headers("b-c", "c.x==y");
+
+  auto mapping = get_sub_graph_mapping(graph_small, graph_large);
+
+  EXPECT_EQ(mapping.size(), 1);
+  EXPECT_THAT(mapping, testing::Contains(testing::Pair("a", "c")));
+
+  const auto *node = get_node_with_id(graph_large, "c");
+  ASSERT_NE(node, nullptr);
+  ASSERT_EQ(node->properties.at({"x"}), "y");
 }
